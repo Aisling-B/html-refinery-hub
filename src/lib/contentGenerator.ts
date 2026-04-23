@@ -109,7 +109,6 @@ export const DEFAULT_SHELLS: AppShells = {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" media="all" href="style.css" type="text/css" />
 </head>
-<body class="[INSERT_SECTION_CODE]">
 [INJECT_BODY_HERE]
 </body>
 </html>`,
