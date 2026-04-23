@@ -1,9 +1,18 @@
 export interface Metadata {
+  baseFilename: string;
   courseName: string;
   courseCode: string;
   pageTitle: string;
   topicClassName: string;
   fosteringSectionCode: string;
+}
+
+export interface RegionalSnippets {
+  england: string;
+  northernIreland: string;
+  wales: string;
+  scotland: string;
+  isleOfMan: string;
 }
 
 export interface GeneratedFile {
@@ -12,6 +21,14 @@ export interface GeneratedFile {
   content: string;
   mime: string;
 }
+
+const PLACEHOLDER = "[INSERT_REGIONAL_SIGNPOSTING_HERE]";
+
+const injectRegional = (html: string, snippet: string): string => {
+  if (!html.includes(PLACEHOLDER)) return html;
+  // Replace all occurrences without regex (literal string)
+  return html.split(PLACEHOLDER).join(snippet ?? "");
+};
 
 const parseHTML = (html: string): Document => {
   const parser = new DOMParser();
@@ -46,59 +63,102 @@ const serializeFullDoc = (doc: Document): string => {
   return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
 };
 
-export const generateFiles = (baseHTML: string, meta: Metadata): GeneratedFile[] => {
-  const { courseCode, topicClassName, fosteringSectionCode } = meta;
+export const generateFiles = (
+  baseHTML: string,
+  meta: Metadata,
+  snippets: RegionalSnippets
+): GeneratedFile[] => {
+  const { baseFilename, topicClassName, fosteringSectionCode } = meta;
 
-  // 1. Safer Schools ZM (Base) - exact duplicate
+  // Pre-build region-specific source HTML
+  const englandHTML = injectRegional(baseHTML, snippets.england);
+  const niHTML = injectRegional(baseHTML, snippets.northernIreland);
+  const walesHTML = injectRegional(baseHTML, snippets.wales);
+  const scotlandHTML = injectRegional(baseHTML, snippets.scotland);
+  const iomHTML = injectRegional(baseHTML, snippets.isleOfMan);
+
+  // 1. Safer Schools ZM (England snippet) - full HTML duplicate
   const ssZm: GeneratedFile = {
-    appName: "Safer Schools ZM (Base)",
-    fileName: `${courseCode}_ZM.html`,
-    content: baseHTML,
+    appName: "Safer Schools ZM",
+    fileName: `${baseFilename}_all.html`,
+    content: englandHTML,
     mime: "text/html",
   };
 
-  // 2. Great Schools Trust & North Birmingham Academy - exact duplicate
+  // 2. Safer Schools England - full HTML
+  const ssEng: GeneratedFile = {
+    appName: "Safer Schools England",
+    fileName: `${baseFilename}_eng.html`,
+    content: englandHTML,
+    mime: "text/html",
+  };
+
+  // 3. Safer Schools Scotland - full HTML
+  const ssScot: GeneratedFile = {
+    appName: "Safer Schools Scotland",
+    fileName: `${baseFilename}_scot.html`,
+    content: scotlandHTML,
+    mime: "text/html",
+  };
+
+  // 4. Safer Schools Wales - full HTML
+  const ssWales: GeneratedFile = {
+    appName: "Safer Schools Wales",
+    fileName: `${baseFilename}_wales.html`,
+    content: walesHTML,
+    mime: "text/html",
+  };
+
+  // 5. Safer Schools Isle of Man - full HTML
+  const ssIom: GeneratedFile = {
+    appName: "Safer Schools Isle of Man",
+    fileName: `${baseFilename}_iom.html`,
+    content: iomHTML,
+    mime: "text/html",
+  };
+
+  // 6. Great Schools Trust & NBA (England snippet) - full HTML
   const gstNba: GeneratedFile = {
     appName: "Great Schools Trust & NBA",
-    fileName: `${courseCode}_GST_NBA.html`,
-    content: baseHTML,
+    fileName: `${baseFilename}_GST_NBA.html`,
+    content: englandHTML,
     mime: "text/html",
   };
 
-  // 3. Safer Schools NI - full HTML, swap class to deniblue
-  const ssniDoc = parseHTML(baseHTML);
+  // 7. Safer Schools NI - full HTML, swap class to deniblue
+  const ssniDoc = parseHTML(niHTML);
   swapClass(ssniDoc, topicClassName, "deniblue");
   const ssni: GeneratedFile = {
     appName: "Safer Schools NI",
-    fileName: `${courseCode}_SSNI.html`,
+    fileName: `${baseFilename}_deni.html`,
     content: serializeFullDoc(ssniDoc),
     mime: "text/html",
   };
 
-  // 4. David Game College - body innerHTML, class davidgamegreen, fix img paths
-  const dgDoc = parseHTML(baseHTML);
+  // 8. David Game College (England snippet) - body innerHTML, davidgamegreen
+  const dgDoc = parseHTML(englandHTML);
   swapClass(dgDoc, topicClassName, "davidgamegreen");
   fixImagePaths(dgDoc);
   const davidGame: GeneratedFile = {
     appName: "David Game College",
-    fileName: `${courseCode}_DavidGame.html`,
+    fileName: `${baseFilename}_davidgame.html`,
     content: serializeBodyInner(dgDoc),
     mime: "text/html",
   };
 
-  // 5. Bromley Permanency - body innerHTML, class bromgreen, fix img paths
-  const bromDoc = parseHTML(baseHTML);
+  // 9. Bromley Permanency (England snippet) - body innerHTML, bromgreen
+  const bromDoc = parseHTML(englandHTML);
   swapClass(bromDoc, topicClassName, "bromgreen");
   fixImagePaths(bromDoc);
   const bromley: GeneratedFile = {
     appName: "Bromley Permanency",
-    fileName: `${courseCode}_Bromley.html`,
+    fileName: `${baseFilename}_bromley.html`,
     content: serializeBodyInner(bromDoc),
     mime: "text/html",
   };
 
-  // 6. Fostering in a Digital World - body innerHTML, class hsc-[code], fix imgs, replace <a> buttons
-  const fosDoc = parseHTML(baseHTML);
+  // 10. Fostering in a Digital World (NI snippet) - body innerHTML, hsc-[code]
+  const fosDoc = parseHTML(niHTML);
   swapClass(fosDoc, topicClassName, `hsc-${fosteringSectionCode}`);
   fixImagePaths(fosDoc);
   const anchors = Array.from(fosDoc.querySelectorAll("a"));
@@ -113,12 +173,12 @@ export const generateFiles = (baseHTML: string, meta: Metadata): GeneratedFile[]
   });
   const fostering: GeneratedFile = {
     appName: "Fostering in a Digital World",
-    fileName: `${courseCode}_Fostering.html`,
+    fileName: `${baseFilename}_fostering.html`,
     content: serializeBodyInner(fosDoc),
     mime: "text/html",
   };
 
-  return [ssZm, gstNba, ssni, davidGame, bromley, fostering];
+  return [ssZm, ssEng, ssScot, ssWales, ssIom, gstNba, ssni, davidGame, bromley, fostering];
 };
 
 export const generateCSV = (files: GeneratedFile[], meta: Metadata): string => {

@@ -7,22 +7,40 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Circle, Download, FileCode2, Sparkles } from "lucide-react";
-import { generateFiles, generateCSV, type GeneratedFile, type Metadata } from "@/lib/contentGenerator";
+import {
+  generateFiles,
+  generateCSV,
+  type GeneratedFile,
+  type Metadata,
+  type RegionalSnippets,
+} from "@/lib/contentGenerator";
 
 const Index = () => {
   const [baseHTML, setBaseHTML] = useState("");
   const [meta, setMeta] = useState<Metadata>({
+    baseFilename: "",
     courseName: "",
     courseCode: "",
     pageTitle: "",
     topicClassName: "",
     fosteringSectionCode: "",
   });
+  const [snippets, setSnippets] = useState<RegionalSnippets>({
+    england: "",
+    northernIreland: "",
+    wales: "",
+    scotland: "",
+    isleOfMan: "",
+  });
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
 
   const placeholderFiles = [
-    "Safer Schools ZM (Base)",
+    "Safer Schools ZM",
+    "Safer Schools England",
+    "Safer Schools Scotland",
+    "Safer Schools Wales",
+    "Safer Schools Isle of Man",
     "Great Schools Trust & NBA",
     "Safer Schools NI",
     "David Game College",
@@ -41,11 +59,11 @@ const Index = () => {
       return;
     }
     try {
-      const files = generateFiles(baseHTML, meta);
+      const files = generateFiles(baseHTML, meta, snippets);
       const csvData = generateCSV(files, meta);
       setGenerated(files);
       setCsv(csvData);
-      toast.success("6 files generated", { description: "Ready to download as a ZIP bundle." });
+      toast.success("10 files generated", { description: "Ready to download as a ZIP bundle." });
     } catch (err) {
       console.error(err);
       toast.error("Generation failed", { description: "Could not parse the provided HTML." });
@@ -61,13 +79,21 @@ const Index = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${meta.courseCode || "content"}_bundle.zip`;
+    a.download = `${meta.baseFilename || meta.courseCode || "content"}_bundle.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success("Bundle downloaded");
   };
+
+  const signpostingFields: { key: keyof RegionalSnippets; label: string }[] = [
+    { key: "england", label: "England Signposting" },
+    { key: "northernIreland", label: "Northern Ireland Signposting" },
+    { key: "wales", label: "Wales Signposting" },
+    { key: "scotland", label: "Scotland Signposting" },
+    { key: "isleOfMan", label: "Isle of Man Signposting" },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
@@ -99,12 +125,19 @@ const Index = () => {
                   id="html"
                   value={baseHTML}
                   onChange={(e) => setBaseHTML(e.target.value)}
-                  placeholder="<!DOCTYPE html>&#10;<html>...</html>"
-                  className="min-h-[260px] font-mono text-xs resize-y"
+                  placeholder="<!DOCTYPE html>&#10;<html>...&#10;  [INSERT_REGIONAL_SIGNPOSTING_HERE]&#10;...</html>"
+                  className="min-h-[220px] font-mono text-xs resize-y"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tip: include <code className="font-mono">[INSERT_REGIONAL_SIGNPOSTING_HERE]</code> where regional content should be injected.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <Label htmlFor="baseFilename" className="mb-1.5 block">Base Filename</Label>
+                  <Input id="baseFilename" value={meta.baseFilename} onChange={(e) => setMeta({ ...meta, baseFilename: e.target.value })} placeholder="education_pupil_middle_ie_overview" />
+                </div>
                 <div>
                   <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
                   <Input id="courseName" value={meta.courseName} onChange={(e) => setMeta({ ...meta, courseName: e.target.value })} placeholder="Healthy Tech Use" />
@@ -124,6 +157,24 @@ const Index = () => {
                 <div className="sm:col-span-2">
                   <Label htmlFor="fostering" className="mb-1.5 block">Fostering Section Code</Label>
                   <Input id="fostering" value={meta.fosteringSectionCode} onChange={(e) => setMeta({ ...meta, fosteringSectionCode: e.target.value })} placeholder="is" />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <h3 className="text-sm font-semibold mb-2">Regional Signposting Snippets</h3>
+                <div className="space-y-3">
+                  {signpostingFields.map((f) => (
+                    <div key={f.key}>
+                      <Label htmlFor={`sn-${f.key}`} className="mb-1.5 block">{f.label}</Label>
+                      <Textarea
+                        id={`sn-${f.key}`}
+                        value={snippets[f.key]}
+                        onChange={(e) => setSnippets({ ...snippets, [f.key]: e.target.value })}
+                        placeholder={`HTML to inject for ${f.label.replace(" Signposting", "")}`}
+                        className="min-h-[80px] font-mono text-xs resize-y"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 
