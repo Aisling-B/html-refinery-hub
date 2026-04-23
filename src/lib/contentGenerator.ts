@@ -114,7 +114,6 @@ export const DEFAULT_SHELLS: AppShells = {
 </body>
 </html>`,
 };
-const PLACEHOLDER = "[INSERT_REGIONAL_SIGNPOSTING_HERE]";
 
 const injectRegional = (html: string, snippet: string): string => {
   // If there's no snippet provided, or the placeholder isn't in the HTML, do nothing
