@@ -8,11 +8,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Circle, Download, FileCode2, Sparkles } from "lucide-react";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   generateFiles,
   generateCSV,
+  DEFAULT_SHELLS,
   type GeneratedFile,
   type Metadata,
   type RegionalSnippets,
+  type AppShells,
 } from "@/lib/contentGenerator";
 
 const Index = () => {
@@ -32,6 +40,7 @@ const Index = () => {
     scotland: "",
     isleOfMan: "",
   });
+  const [shells, setShells] = useState<AppShells>(DEFAULT_SHELLS);
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
 
@@ -59,7 +68,7 @@ const Index = () => {
       return;
     }
     try {
-      const files = generateFiles(baseHTML, meta, snippets);
+      const files = generateFiles(baseHTML, meta, snippets, shells);
       const csvData = generateCSV(files, meta);
       setGenerated(files);
       setCsv(csvData);
@@ -177,6 +186,51 @@ const Index = () => {
                   ))}
                 </div>
               </div>
+
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="shells" className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-sm font-semibold">
+                    App Shells (advanced)
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Body-only outputs are wrapped in these shells. Use{" "}
+                      <code className="font-mono">[INJECT_BODY_HERE]</code> as the placeholder.
+                      The Fostering shell also supports{" "}
+                      <code className="font-mono">[INSERT_SECTION_CODE]</code>.
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="shell-dg" className="mb-1.5 block">David Game Shell HTML</Label>
+                        <Textarea
+                          id="shell-dg"
+                          value={shells.davidGame}
+                          onChange={(e) => setShells({ ...shells, davidGame: e.target.value })}
+                          className="min-h-[120px] font-mono text-xs resize-y"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="shell-brom" className="mb-1.5 block">Bromley Shell HTML</Label>
+                        <Textarea
+                          id="shell-brom"
+                          value={shells.bromley}
+                          onChange={(e) => setShells({ ...shells, bromley: e.target.value })}
+                          className="min-h-[120px] font-mono text-xs resize-y"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="shell-fos" className="mb-1.5 block">Fostering Shell HTML</Label>
+                        <Textarea
+                          id="shell-fos"
+                          value={shells.fostering}
+                          onChange={(e) => setShells({ ...shells, fostering: e.target.value })}
+                          className="min-h-[120px] font-mono text-xs resize-y"
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               <Button
                 onClick={handleGenerate}
