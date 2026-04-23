@@ -145,13 +145,13 @@ const parseSignpostingText = (text: string, topicClass: string): string => {
       }
     });
 
-    if (title || body || buttonText) {
+if (title || body || buttonText) {
       finalHtml += `<div class="grey">
     <h4 class="${topicClass}">${title}</h4>
     <p>${body}</p>
     <a class="roundcorners btn" href="${buttonUrl}" target="_blank">
         <div>
-            <img align="left" src="link_chain_grey.png" width="5px">
+            <img align="left" src="../images/link_chain_grey.png" width="5px">
             <p>${buttonText}</p>
         </div>
     </a>
