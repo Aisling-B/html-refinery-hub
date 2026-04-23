@@ -6,21 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2, Circle, Download, FileCode2, Sparkles } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   generateFiles,
   generateCSV,
   DEFAULT_SHELLS,
+  APP_OPTIONS,
+  DEFAULT_SELECTION,
   type GeneratedFile,
   type Metadata,
   type RegionalSnippets,
-  type AppShells,
+  type AppSelection,
+  type AppKey,
 } from "@/lib/contentGenerator";
 
 const Index = () => {
@@ -31,7 +29,6 @@ const Index = () => {
     courseCode: "",
     pageTitle: "",
     topicClassName: "",
-    fosteringSectionCode: "",
   });
   const [snippets, setSnippets] = useState<RegionalSnippets>({
     england: "",
@@ -40,22 +37,9 @@ const Index = () => {
     scotland: "",
     isleOfMan: "",
   });
-  const [shells, setShells] = useState<AppShells>(DEFAULT_SHELLS);
+  const [selection, setSelection] = useState<AppSelection>(DEFAULT_SELECTION);
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
-
-  const placeholderFiles = [
-    "Safer Schools ZM",
-    "Safer Schools England",
-    "Safer Schools Scotland",
-    "Safer Schools Wales",
-    "Safer Schools Isle of Man",
-    "Great Schools Trust & NBA",
-    "Safer Schools NI",
-    "David Game College",
-    "Bromley Permanency",
-    "Fostering in a Digital World",
-  ];
 
   const handleGenerate = () => {
     if (!baseHTML.trim()) {
@@ -68,11 +52,15 @@ const Index = () => {
       return;
     }
     try {
-      const files = generateFiles(baseHTML, meta, snippets, shells);
+      const files = generateFiles(baseHTML, meta, snippets, DEFAULT_SHELLS, selection);
+      if (!files.length) {
+        toast.error("No apps selected", { description: "Tick at least one app to generate." });
+        return;
+      }
       const csvData = generateCSV(files, meta);
       setGenerated(files);
       setCsv(csvData);
-      toast.success("10 files generated", { description: "Ready to download as a ZIP bundle." });
+      toast.success(`${files.length} files generated`, { description: "Ready to download as a ZIP bundle." });
     } catch (err) {
       console.error(err);
       toast.error("Generation failed", { description: "Could not parse the provided HTML." });
@@ -96,6 +84,10 @@ const Index = () => {
     toast.success("Bundle downloaded");
   };
 
+  const toggleApp = (key: AppKey) => {
+    setSelection((s) => ({ ...s, [key]: !s[key] }));
+  };
+
   const signpostingFields: { key: keyof RegionalSnippets; label: string }[] = [
     { key: "england", label: "England Signposting" },
     { key: "northernIreland", label: "Northern Ireland Signposting" },
@@ -103,6 +95,10 @@ const Index = () => {
     { key: "scotland", label: "Scotland Signposting" },
     { key: "isleOfMan", label: "Isle of Man Signposting" },
   ];
+
+  const previewList: { appName: string; fileName: string }[] = generated
+    ? generated.map((f) => ({ appName: f.appName, fileName: f.fileName }))
+    : APP_OPTIONS.filter((o) => selection[o.key]).map((o) => ({ appName: o.label, fileName: "—" }));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
@@ -163,10 +159,6 @@ const Index = () => {
                   <Label htmlFor="topicClassName" className="mb-1.5 block">Topic Class Name</Label>
                   <Input id="topicClassName" value={meta.topicClassName} onChange={(e) => setMeta({ ...meta, topicClassName: e.target.value })} placeholder="hot topics" />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="fostering" className="mb-1.5 block">Fostering Section Code</Label>
-                  <Input id="fostering" value={meta.fosteringSectionCode} onChange={(e) => setMeta({ ...meta, fosteringSectionCode: e.target.value })} placeholder="is" />
-                </div>
               </div>
 
               <div className="pt-2">
@@ -187,51 +179,6 @@ const Index = () => {
                 </div>
               </div>
 
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="shells" className="border rounded-lg px-4">
-                  <AccordionTrigger className="text-sm font-semibold">
-                    App Shells (advanced)
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Body-only outputs are wrapped in these shells. Use{" "}
-                      <code className="font-mono">[INJECT_BODY_HERE]</code> as the placeholder.
-                      The Fostering shell also supports{" "}
-                      <code className="font-mono">[INSERT_SECTION_CODE]</code>.
-                    </p>
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="shell-dg" className="mb-1.5 block">David Game Shell HTML</Label>
-                        <Textarea
-                          id="shell-dg"
-                          value={shells.davidGame}
-                          onChange={(e) => setShells({ ...shells, davidGame: e.target.value })}
-                          className="min-h-[120px] font-mono text-xs resize-y"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="shell-brom" className="mb-1.5 block">Bromley Shell HTML</Label>
-                        <Textarea
-                          id="shell-brom"
-                          value={shells.bromley}
-                          onChange={(e) => setShells({ ...shells, bromley: e.target.value })}
-                          className="min-h-[120px] font-mono text-xs resize-y"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="shell-fos" className="mb-1.5 block">Fostering Shell HTML</Label>
-                        <Textarea
-                          id="shell-fos"
-                          value={shells.fostering}
-                          onChange={(e) => setShells({ ...shells, fostering: e.target.value })}
-                          className="min-h-[120px] font-mono text-xs resize-y"
-                        />
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
               <Button
                 onClick={handleGenerate}
                 size="lg"
@@ -245,62 +192,89 @@ const Index = () => {
           </Card>
 
           {/* Output column */}
-          <Card className="p-6 shadow-[var(--shadow-card)]">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Output</h2>
-              <span className="text-xs text-muted-foreground">{generated ? `${generated.length} files + CSV` : "Awaiting generation"}</span>
-            </div>
-
-            <ul className="space-y-2 mb-5">
-              {(generated ?? placeholderFiles.map((appName) => ({ appName, fileName: "—" } as GeneratedFile))).map((f, i) => {
-                const ready = !!generated;
-                return (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors"
+          <div className="space-y-6">
+            <Card className="p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">App Selection</h2>
+                <span className="text-xs text-muted-foreground">
+                  {Object.values(selection).filter(Boolean).length} of {APP_OPTIONS.length} selected
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {APP_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.key}
+                    htmlFor={`chk-${opt.key}`}
+                    className="flex items-center gap-2 rounded-md border border-border px-3 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {ready ? (
-                        <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-                      ) : (
-                        <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{f.appName}</p>
-                        <p className="text-xs text-muted-foreground truncate font-mono">{f.fileName}</p>
-                      </div>
-                    </div>
-                    <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </li>
-                );
-              })}
-              <li className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {generated ? (
-                    <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Tracker CSV</p>
-                    <p className="text-xs text-muted-foreground font-mono">Content_Tracker_Update.csv</p>
-                  </div>
-                </div>
-                <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
-              </li>
-            </ul>
+                    <Checkbox
+                      id={`chk-${opt.key}`}
+                      checked={selection[opt.key]}
+                      onCheckedChange={() => toggleApp(opt.key)}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </Card>
 
-            <Button
-              onClick={handleDownload}
-              disabled={!generated}
-              size="lg"
-              variant="outline"
-              className="w-full"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download All as .ZIP
-            </Button>
-          </Card>
+            <Card className="p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Output</h2>
+                <span className="text-xs text-muted-foreground">{generated ? `${generated.length} files + CSV` : "Awaiting generation"}</span>
+              </div>
+
+              <ul className="space-y-2 mb-5">
+                {previewList.map((f, i) => {
+                  const ready = !!generated;
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {ready ? (
+                          <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{f.appName}</p>
+                          <p className="text-xs text-muted-foreground truncate font-mono">{f.fileName}</p>
+                        </div>
+                      </div>
+                      <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </li>
+                  );
+                })}
+                <li className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {generated ? (
+                      <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Tracker CSV</p>
+                      <p className="text-xs text-muted-foreground font-mono">Content_Tracker_Update.csv</p>
+                    </div>
+                  </div>
+                  <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                </li>
+              </ul>
+
+              <Button
+                onClick={handleDownload}
+                disabled={!generated}
+                size="lg"
+                variant="outline"
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download All as .ZIP
+              </Button>
+            </Card>
+          </div>
         </div>
       </main>
     </div>
