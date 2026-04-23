@@ -114,26 +114,16 @@ export const DEFAULT_SHELLS: AppShells = {
 </body>
 </html>`,
 };
+const PLACEHOLDER = "[INSERT_REGIONAL_SIGNPOSTING_HERE]";
 
 const injectRegional = (html: string, snippet: string): string => {
-  if (!snippet || !snippet.trim()) return html;
-
-  let newHtml = html;
-  const lines = snippet.split('\n');
-
-  lines.forEach((line) => {
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) return;
-
-    const key = line.substring(0, colonIndex).trim();
-    const value = line.substring(colonIndex + 1).trim();
-
-    if (key) {
-      newHtml = newHtml.split(key).join(value);
-    }
-  });
-
-  return newHtml;
+  // If there's no snippet provided, or the placeholder isn't in the HTML, do nothing
+  if (!snippet || !snippet.trim() || !html.includes(PLACEHOLDER)) {
+    return html;
+  }
+  
+  // Safely inject the entire HTML block wherever the placeholder sits
+  return html.split(PLACEHOLDER).join(snippet);
 };
 
 const injectBody = (shell: string, body: string): string => {
@@ -187,12 +177,25 @@ const replaceFosteringButtons = (root: Document) => {
   candidates.forEach((a) => {
     const cls = (a.getAttribute("class") || "").toLowerCase();
     const looksLikeButtonClass = /\bbtn\b|\bbutton\b/.test(cls);
-    const wrapsButton = !!a.querySelector("button");
-    if (!looksLikeButtonClass && !wrapsButton) return;
+    if (!looksLikeButtonClass) return;
 
+    // Extract the original text 
+    const text = a.textContent?.trim() || "";
+    
+    // Try to find the original image to keep the correct icon (e.g., PDF icon vs Chain icon)
+    const imgNode = a.querySelector("img");
+    let imgSrc = "link_chain_grey.png"; // Fallback
+    if (imgNode) {
+      const originalSrc = imgNode.getAttribute("src") || "";
+      // Strip the folder paths as Fostering requires images in the root
+      imgSrc = originalSrc.replace(/\.\.\/images\//g, "").replace(/images\//g, "");
+    }
+
+    // Rebuild the button with the extracted dynamic content and Fostering's structure
     const href = a.getAttribute("href") || "#";
     const wrapper = root.createElement("div");
-    wrapper.innerHTML = `<a class="roundcorners" href="${href}" target="_blank"><div><img align="left" src="link_chain_grey.png"><p class="btn-text">Report Remove</p></div></a>`;
+    wrapper.innerHTML = `<a class="roundcorners" href="${href}" target="_blank"><div><img align="left" src="${imgSrc}"><p class="btn-text">${text}</p></div></a>`;
+    
     const newNode = wrapper.firstElementChild;
     if (newNode && a.parentNode) {
       a.parentNode.replaceChild(newNode, a);
