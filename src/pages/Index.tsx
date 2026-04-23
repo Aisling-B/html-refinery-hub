@@ -125,7 +125,7 @@ const Index = () => {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="html" className="mb-1.5 block">Paste Base ZM 3.0 HTML Here</Label>
+                <Label htmlFor="html" className="mb-1.5 block">Paste Safer Schools ZM 3.0 HTML Here as the template</Label>
                 <Textarea
                   id="html"
                   value={baseHTML}
