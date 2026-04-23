@@ -145,7 +145,7 @@ const Index = () => {
                 </div>
                 <div>
                   <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
-                  <Input id="courseName" value={meta.courseName} onChange={(e) => setMeta({ ...meta, courseName: e.target.value })} placeholder="Healthy Tech Use" />
+                  <Input id="courseName" value={meta.courseName} onChange={(e) => setMeta({ ...meta, courseName: e.target.value })} placeholder="Hot Topics" />
                 </div>
                 <div>
                   <Label htmlFor="courseCode" className="mb-1.5 block">Course Code</Label>
@@ -153,11 +153,11 @@ const Index = () => {
                 </div>
                 <div>
                   <Label htmlFor="pageTitle" className="mb-1.5 block">Page Title</Label>
-                  <Input id="pageTitle" value={meta.pageTitle} onChange={(e) => setMeta({ ...meta, pageTitle: e.target.value })} placeholder="Hot Topics" />
+                  <Input id="pageTitle" value={meta.pageTitle} onChange={(e) => setMeta({ ...meta, pageTitle: e.target.value })} placeholder="Catching a Catfish" />
                 </div>
                 <div>
-                  <Label htmlFor="topicClassName" className="mb-1.5 block">Topic Class Name</Label>
-                  <Input id="topicClassName" value={meta.topicClassName} onChange={(e) => setMeta({ ...meta, topicClassName: e.target.value })} placeholder="hot topics" />
+                  <Label htmlFor="topicClassName" className="mb-1.5 block">Topic Class Name (CSS)</Label>
+                  <Input id="topicClassName" value={meta.topicClassName} onChange={(e) => setMeta({ ...meta, topicClassName: e.target.value })} placeholder="hottopics" />
                 </div>
               </div>
 
