@@ -116,8 +116,24 @@ export const DEFAULT_SHELLS: AppShells = {
 };
 
 const injectRegional = (html: string, snippet: string): string => {
-  if (!html.includes(PLACEHOLDER)) return html;
-  return html.split(PLACEHOLDER).join(snippet ?? "");
+  if (!snippet || !snippet.trim()) return html;
+
+  let newHtml = html;
+  const lines = snippet.split('\n');
+
+  lines.forEach((line) => {
+    const colonIndex = line.indexOf(':');
+    if (colonIndex === -1) return;
+
+    const key = line.substring(0, colonIndex).trim();
+    const value = line.substring(colonIndex + 1).trim();
+
+    if (key) {
+      newHtml = newHtml.split(key).join(value);
+    }
+  });
+
+  return newHtml;
 };
 
 const injectBody = (shell: string, body: string): string => {
