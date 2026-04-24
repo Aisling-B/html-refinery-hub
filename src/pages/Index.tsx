@@ -98,6 +98,10 @@ const Index = () => {
     setSelection((s) => ({ ...s, [key]: !s[key] }));
   };
 
+  const toggleRole = (key: RoleKey) => {
+    setRoles((r) => ({ ...r, [key]: !r[key] }));
+  };
+
   const signpostingFields: { key: keyof RegionalSnippets; label: string }[] = [
     { key: "england", label: "England Signposting" },
     { key: "northernIreland", label: "Northern Ireland Signposting" },
