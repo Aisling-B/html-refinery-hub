@@ -937,21 +937,53 @@ export const buildCsvRows = (
   return rows;
 };
 
+// --- 1. THE TRANSLATOR BRAIN ---
+// This automatically swaps prefixes (e.g. ENG -> DG for David Game)
+const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): string => {
+  let suffix = baseCode;
+  const prefixes = ["ENG", "SCOT", "WAL", "IOM", "GST", "NBA", "DG", "DE", "BP", "CHSCT", "CHSC"];
+  
+  // Strip the prefix to get the core topic (e.g., "ENGHT" -> "HT")
+  for (const p of prefixes) {
+    if (baseCode.startsWith(p)) {
+      suffix = baseCode.substring(p.length);
+      break;
+    }
+  }
+
+  // Map to the correct app prefix
+  const prefixMap: Record<AppKey, string> = {
+    ssZm: "ENG", ssEng: "ENG", ssScot: "SCOT", ssWales: "WAL", ssIom: "IOM",
+    gst: "GST", nba: "NBA", ssni: "DE", davidGame: "DG", bromley: "BP", fostering: "CHSCT", 
+  };
+
+  const newPrefix = prefixMap[internalAppKey] || "ENG";
+  
+  // Edge cases for Fostering & Bromley's irregular codes
+  if (internalAppKey === "fostering") {
+    if (suffix === "HW") return "CHSCHW";
+    if (suffix === "IS") return "CHSCIS";
+    if (suffix === "SC") return "CHSCSC";
+    if (suffix === "G") return "CHSCTGA"; 
+  }
+  if (internalAppKey === "bromley" && suffix === "S") return "BPSC";
+
+  return newPrefix + suffix;
+};
+
+// --- 2. THE FIXED CSV GENERATOR ---
 export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRoles: Record<string, boolean> = {}): string => {
   const allRows: string[] = [];
   let headerGenerated = false;
 
   files.forEach((file) => {
-    // 1. FIXED: Find the correct app config using the file's appName
     const internalAppKey = APP_NAME_TO_KEY[file.appName];
     if (!internalAppKey) return;
     
     const configKey = APP_KEY_TO_CONFIG[internalAppKey];
     const config = APP_CONFIGS[configKey];
-    
     if (!config) return;
 
-    // Use the exact 22 app-specific columns for your backend
     const columns = [
       "Role ", "Course Group", "Course Group Icon", "Course Name", "Course Icon", 
       "Course Code", "Module Code", "Module Name", "Page Title", "PageIcon", 
@@ -965,47 +997,36 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
       headerGenerated = true;
     }
 
-    // 2. FIXED: Pull from the Master Database using Lovable's exact variable names
-    const courseData = COURSE_LIBRARY[meta.courseCode] || {
-      courseGroup: "",
-      courseName: "",
-      hexColour: "",
-      courseIcon: ""
+    // THIS IS THE MAGIC: Translate ENGHT to DGHT, DEHT, etc. based on the app!
+    const appSpecificCode = getAppSpecificCourseCode(meta.courseCode, internalAppKey);
+
+    // Look up the specific app's data using the TRANSLATED code
+    const courseData = COURSE_LIBRARY[appSpecificCode] || COURSE_LIBRARY[meta.courseCode] || {
+      courseGroup: "", courseName: "", hexColour: "", courseIcon: ""
     };
 
     const availableRolesInApp = config.roles || {};
     
     Object.keys(selectedRoles).forEach((roleKey) => {
-      // Only generate if the user ticked the box AND the app supports that role
       if (selectedRoles[roleKey] && availableRolesInApp[roleKey as RoleKey]) {
         const exactRoleName = availableRolesInApp[roleKey as RoleKey];
         
         const rowData = columns.map(col => {
           const cleanCol = col.trim().toLowerCase();
           
-          // Role & URLs
           if (cleanCol === "role" || cleanCol === "role ") return exactRoleName;
           if (cleanCol === "htmlurl" || cleanCol === "html url") return `${config.baseUrl}${file.fileName}`;
-          
-          // Inputs from UI
           if (cleanCol === "page title") return meta.pageTitle;
-          if (cleanCol === "course code") return meta.courseCode;
           if (cleanCol === "headerimageurl" || cleanCol === "header image url") return meta.headerImageUrl || "";
           
-          // Master Database Matches
-          if (cleanCol === "course group") return courseData.courseGroup;
-          if (cleanCol === "course name") return courseData.courseName || meta.courseName;
-          if (cleanCol === "colour") return courseData.hexColour;
+          // Use the TRANSLATED course code for the CSV!
+          if (cleanCol === "course code") return appSpecificCode; 
           
-          // Icons
-          if (cleanCol === "course icon" || cleanCol === "pageicon" || cleanCol === "page icon") {
-             let iconPath = courseData.courseIcon || "";
-             // Automatically swap the asset path for NI
-             if (internalAppKey === "ssni" && iconPath) {
-                 iconPath = iconPath.replace("/assets/icons/", "/northernireland/assets/tile_icons/");
-             }
-             return iconPath;
-          }
+          // Pulling the correct App-Specific data from the Dictionary
+          if (cleanCol === "course group") return courseData.courseGroup || "";
+          if (cleanCol === "course name") return courseData.courseName || meta.courseName;
+          if (cleanCol === "colour") return courseData.hexColour || "";
+          if (cleanCol === "course icon" || cleanCol === "pageicon" || cleanCol === "page icon") return courseData.courseIcon || "";
           
           // Static Defaults
           if (cleanCol === "module code") return "L1";
@@ -1018,7 +1039,6 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
           return ""; 
         });
 
-        // Escape commas for CSV
         allRows.push(rowData.map(v => {
             const s = String(v || "");
             return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
