@@ -4,6 +4,7 @@ export interface Metadata {
   courseCode: string;
   pageTitle: string;
   topicClassName: string;
+  headerImageUrl: string;
 }
 
 export interface RegionalSnippets {
