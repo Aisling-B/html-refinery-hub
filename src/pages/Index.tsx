@@ -44,8 +44,10 @@ const Index = () => {
     isleOfMan: "",
   });
   const [selection, setSelection] = useState<AppSelection>(DEFAULT_SELECTION);
+  const [roles, setRoles] = useState<Record<RoleKey, boolean>>(DEFAULT_ROLES);
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
+  const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
 
   const handleGenerate = () => {
     if (!baseHTML.trim()) {
