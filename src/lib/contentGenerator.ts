@@ -4,6 +4,7 @@ export interface Metadata {
   courseCode: string;
   pageTitle: string;
   topicClassName: string;
+  headerImageUrl: string;
 }
 
 export interface RegionalSnippets {
@@ -391,65 +392,197 @@ export const generateFiles = (
 };
 
 // =====================================================
-// CSV / App-aware metadata mapping
+// CSV / App-aware metadata mapping (Master Database)
 // =====================================================
 
-export type RoleKey = "staff" | "parent" | "pupil" | "safeguarding";
+// Granular role keys used across the platform
+export type RoleKey =
+  | "staffPrimary"
+  | "staffSecondary"
+  | "parentPrimary"
+  | "parentSecondary"
+  | "pupilPrimary"
+  | "pupilLower"
+  | "pupilMiddle"
+  | "pupilUpper"
+  | "sgPrimary"
+  | "sgSecondary";
 
 export const ROLE_OPTIONS: { key: RoleKey; label: string }[] = [
-  { key: "staff", label: "Staff" },
-  { key: "parent", label: "Parent" },
-  { key: "pupil", label: "Pupil" },
-  { key: "safeguarding", label: "Safeguarding Lead" },
+  { key: "staffPrimary", label: "Staff Primary" },
+  { key: "staffSecondary", label: "Staff Secondary" },
+  { key: "parentPrimary", label: "Parent Primary" },
+  { key: "parentSecondary", label: "Parent Secondary" },
+  { key: "pupilPrimary", label: "Pupil Primary" },
+  { key: "pupilLower", label: "Pupil Lower Secondary" },
+  { key: "pupilMiddle", label: "Pupil Middle Secondary" },
+  { key: "pupilUpper", label: "Pupil Upper Secondary" },
+  { key: "sgPrimary", label: "Safeguarding Lead Primary" },
+  { key: "sgSecondary", label: "Safeguarding Lead Secondary" },
 ];
 
-export const DEFAULT_ROLES: Record<RoleKey, boolean> = {
-  staff: true,
-  parent: true,
-  pupil: true,
-  safeguarding: true,
-};
+export const DEFAULT_ROLES: Record<RoleKey, boolean> = ROLE_OPTIONS.reduce(
+  (acc, r) => {
+    acc[r.key] = true;
+    return acc;
+  },
+  {} as Record<RoleKey, boolean>
+);
 
-const ROLE_LABEL_MAP: Record<RoleKey, string> = {
-  staff: "Staff",
-  parent: "Parent",
-  pupil: "Pupil",
-  safeguarding: "Safeguarding Lead",
-};
-
-export type CsvSchema = "saferSchools" | "davidGame" | "fostering" | "bromley";
-
+// Master per-app config: base URL + the app-specific role labels
 export interface AppConfig {
-  schema: CsvSchema;
-  azureBase: string;
-  themeColor?: string;
-  fixedRole?: string; // overrides role selection (Fostering / Bromley)
+  baseUrl: string;
+  roles: Partial<Record<RoleKey, string>>;
 }
 
-export const APP_CONFIGS: Record<AppKey, AppConfig> = {
-  ssZm: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/zm/" },
-  ssEng: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/england/" },
-  ssni: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/ni/" },
-  ssScot: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/scotland/" },
-  ssWales: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/wales/" },
-  ssIom: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/iom/" },
-  gst: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/gst/" },
-  nba: { schema: "saferSchools", azureBase: "https://mock-azure-url.com/html/nba/" },
+export const APP_CONFIGS: Record<string, AppConfig> = {
+  zm: {
+    baseUrl: "https://saferschoolscontent.blob.core.windows.net/html/all/",
+    roles: {
+      staffPrimary: "Staff - Primary",
+      staffSecondary: "Staff - Secondary",
+      parentPrimary: "Parents and Carers Primary",
+      parentSecondary: "Parents and Carers Secondary",
+      pupilPrimary: "Pupil Primary KS2",
+      pupilLower: "Pupil Lower Secondary",
+      pupilMiddle: "Pupil Middle Secondary",
+      pupilUpper: "Pupil Upper Secondary",
+      sgPrimary: "Safeguarding Lead - Primary",
+      sgSecondary: "Safeguarding Lead - Secondary",
+    },
+  },
+  england: {
+    baseUrl: "https://saferschoolscontent.blob.core.windows.net/html/england/",
+    roles: {
+      staffPrimary: "Staff - Primary",
+      staffSecondary: "Staff - Secondary",
+      parentPrimary: "Parents and Carers Primary",
+      parentSecondary: "Parents and Carers Secondary",
+      pupilPrimary: "Pupil Primary KS2",
+      pupilLower: "Pupil Lower Secondary",
+      pupilMiddle: "Pupil Middle Secondary",
+      pupilUpper: "Pupil Upper Secondary",
+      sgPrimary: "Safeguarding Lead - Primary",
+      sgSecondary: "Safeguarding Lead - Secondary",
+    },
+  },
+  isleOfMan: {
+    baseUrl: "https://saferschoolscontent.blob.core.windows.net/html/iom/",
+    roles: {
+      staffPrimary: "Staff - Primary",
+      staffSecondary: "Staff - Secondary",
+      parentPrimary: "Parents and Carers Primary",
+      parentSecondary: "Parents and Carers Secondary",
+      pupilPrimary: "Pupil Primary KS2",
+      pupilLower: "Pupil Lower Secondary",
+      pupilMiddle: "Pupil Middle Secondary",
+      pupilUpper: "Pupil Upper Secondary",
+      sgPrimary: "Safeguarding Lead - Primary",
+      sgSecondary: "Safeguarding Lead - Secondary",
+    },
+  },
+  scotland: {
+    baseUrl: "https://saferschoolscontent.blob.core.windows.net/html/scotland/",
+    roles: {
+      staffPrimary: "Staff - Primary",
+      staffSecondary: "Staff - Secondary",
+      parentPrimary: "Parents and Carers Primary",
+      parentSecondary: "Parents and Carers Secondary",
+      pupilPrimary: "Pupil Primary KS2",
+      pupilLower: "Pupil Lower Secondary",
+      pupilMiddle: "Pupil Middle Secondary",
+      pupilUpper: "Pupil Upper Secondary",
+      sgPrimary: "Safeguarding Lead - Primary",
+      sgSecondary: "Safeguarding Lead - Secondary",
+    },
+  },
+  wales: {
+    baseUrl: "https://saferschoolscontent.blob.core.windows.net/html/wales/",
+    roles: {
+      staffPrimary: "Staff - Primary",
+      staffSecondary: "Staff - Secondary",
+      parentPrimary: "Parents and Carers Primary",
+      parentSecondary: "Parents and Carers Secondary",
+      pupilPrimary: "Pupil Primary KS2",
+      pupilLower: "Pupil Lower Secondary",
+      pupilMiddle: "Pupil Middle Secondary",
+      pupilUpper: "Pupil Upper Secondary",
+      sgPrimary: "Safeguarding Lead - Primary",
+      sgSecondary: "Safeguarding Lead - Secondary",
+    },
+  },
   davidGame: {
-    schema: "davidGame",
-    azureBase: "https://mock-azure-url.com/davidgame_html/",
-    themeColor: "#5BA84F",
+    baseUrl: "https://able3content.blob.core.windows.net/david-game-college/DGC_HTML/",
+    roles: {
+      staffSecondary: "Staff",
+      parentSecondary: "Parents and Guardians",
+      pupilMiddle: "GCSE Students",
+      pupilUpper: "6th Form Students",
+      sgSecondary: "Safeguarding Team",
+    },
+  },
+  greatSchoolsTrust: {
+    baseUrl: "https://able3content.blob.core.windows.net/great-schools-trust/master-course-content/html/",
+    roles: {
+      staffPrimary: "Staff - Primary",
+      staffSecondary: "Staff - Secondary",
+      parentPrimary: "Parents and Carers Primary",
+      parentSecondary: "Parents and Carers Secondary",
+      pupilPrimary: "Pupil Primary KS2",
+      pupilLower: "Pupil Lower Secondary",
+      pupilMiddle: "Pupil Middle Secondary",
+      pupilUpper: "Pupil Upper Secondary",
+      sgPrimary: "Safeguarding Lead - Primary",
+      sgSecondary: "Safeguarding Lead - Secondary",
+    },
+  },
+  northBirminghamAcademy: {
+    baseUrl: "https://able3content.blob.core.windows.net/north-birmingham-academy/master-course-content/html/",
+    roles: {
+      staffSecondary: "Staff",
+      parentSecondary: "Parents and Carers",
+      pupilLower: "Pupil - Lower Secondary",
+      pupilMiddle: "Pupil - Middle Secondary",
+      pupilUpper: "Pupil - Upper Secondary",
+      sgSecondary: "Safeguarding Lead",
+    },
+  },
+  northernIreland: {
+    baseUrl: "https://saferschoolscontent.blob.core.windows.net/northernireland/htmls/course_content/htmls/",
+    roles: {
+      staffPrimary: "Staff Primary",
+      staffSecondary: "Staff Post-Primary",
+      parentPrimary: "Parent/Carer Primary",
+      parentSecondary: "Parent/Carer Post-Primary",
+      pupilPrimary: "Pupil Year 6-7",
+      pupilLower: "Pupil Year 8-9",
+      pupilMiddle: "Pupil Year 10-11",
+      pupilUpper: "Pupil Year 12-14",
+      sgPrimary: "Safeguarding Lead Primary",
+      sgSecondary: "Safeguarding Lead Post-Primary",
+    },
   },
   bromley: {
-    schema: "bromley",
-    azureBase: "https://mock-azure-url.com/brom_perm_html_master_content/",
-    fixedRole: "Special Guardianship",
+    baseUrl: "https://ableportaldev.blob.core.windows.net/bromleypermanency/brom_perm_html_master_content/",
+    roles: {
+      parentSecondary: "Special Guardianship, Foster Carer - Connected Persons",
+    },
   },
-  fostering: {
-    schema: "fostering",
-    azureBase: "https://mock-azure-url.com/HTML%20Files/",
-    fixedRole: "Non Kinship Foster Carer",
-  },
+};
+
+// Map our internal AppKey → master APP_CONFIGS key
+const APP_KEY_TO_CONFIG: Record<AppKey, string> = {
+  ssZm: "zm",
+  ssEng: "england",
+  ssScot: "scotland",
+  ssWales: "wales",
+  ssIom: "isleOfMan",
+  gst: "greatSchoolsTrust",
+  nba: "northBirminghamAcademy",
+  ssni: "northernIreland",
+  davidGame: "davidGame",
+  bromley: "bromley",
+  fostering: "bromley", // fostering shares no master entry; fallback (unused for HTML URL header)
 };
 
 const APP_NAME_TO_KEY: Record<string, AppKey> = APP_OPTIONS.reduce((acc, o) => {
@@ -457,77 +590,88 @@ const APP_NAME_TO_KEY: Record<string, AppKey> = APP_OPTIONS.reduce((acc, o) => {
   return acc;
 }, {} as Record<string, AppKey>);
 
-// Course-code → metadata lookup. Extend as needed.
-export interface CourseAssetEntry {
+// Course library: visual assets per course code
+export interface CourseLibraryEntry {
   courseGroup: string;
+  courseName: string;
   courseIcon: string;
   hexColour: string;
   backgroundImage: string;
 }
 
-export const COURSE_ASSET_MAP: Record<string, CourseAssetEntry> = {
+export const COURSE_LIBRARY: Record<string, CourseLibraryEntry> = {
   ENGHT: {
     courseGroup: "Hot Topics",
+    courseName: "Hot Topics",
     courseIcon: "https://mock-azure-url.com/icons/hottopics.png",
     hexColour: "#E5322D",
     backgroundImage: "https://mock-azure-url.com/bg/hottopics.jpg",
   },
   ENGG: {
     courseGroup: "Gaming",
+    courseName: "Gaming",
     courseIcon: "https://mock-azure-url.com/icons/gaming.png",
     hexColour: "#4CAF50",
     backgroundImage: "https://mock-azure-url.com/bg/gaming.jpg",
   },
   ENGNTK: {
     courseGroup: "Need to Know",
+    courseName: "Need to Know",
     courseIcon: "https://mock-azure-url.com/icons/ntk.png",
     hexColour: "#2196F3",
     backgroundImage: "https://mock-azure-url.com/bg/ntk.jpg",
   },
   ENGSM: {
     courseGroup: "Social Media",
+    courseName: "Social Media",
     courseIcon: "https://mock-azure-url.com/icons/sm.png",
     hexColour: "#9C27B0",
     backgroundImage: "https://mock-azure-url.com/bg/sm.jpg",
   },
   ENGS: {
     courseGroup: "Scams",
+    courseName: "Scams",
     courseIcon: "https://mock-azure-url.com/icons/sc.png",
     hexColour: "#FF9800",
     backgroundImage: "https://mock-azure-url.com/bg/sc.jpg",
   },
   ENGIS: {
     courseGroup: "Internet Safety",
+    courseName: "Internet Safety",
     courseIcon: "https://mock-azure-url.com/icons/is.png",
     hexColour: "#00BCD4",
     backgroundImage: "https://mock-azure-url.com/bg/is.jpg",
   },
   ENGHW: {
     courseGroup: "Health & Wellbeing",
+    courseName: "Health & Wellbeing",
     courseIcon: "https://mock-azure-url.com/icons/hw.png",
     hexColour: "#8BC34A",
     backgroundImage: "https://mock-azure-url.com/bg/hw.jpg",
   },
 };
 
-const SCHEMA_HEADERS: Record<CsvSchema, string[]> = {
-  saferSchools: [
-    "App Name", "Role", "Course Group", "Course Name", "Course Code", "Page Title",
-    "Course Icon", "Hex Colour", "Background Image", "Generated File Name", "HTML URL",
-  ],
-  davidGame: [
-    "App Name", "Role", "Course Group", "Course Name", "Course Code", "Page Title",
-    "Page Icon", "Hex Colour", "Background Image", "Generated File Name", "HTML URL",
-  ],
-  fostering: [
-    "App Name", "Role", "Module", "Course Name", "Course Code", "Page Title",
-    "Section Icon", "Hex Colour", "Background Image", "Generated File Name", "HTML URL",
-  ],
-  bromley: [
-    "App Name", "Role", "Pathway", "Course Name", "Course Code", "Page Title",
-    "Section Icon", "Hex Colour", "Background Image", "Generated File Name", "HTML URL",
-  ],
-};
+// CSV schema (single unified table)
+export const CSV_HEADERS = [
+  "App Name",
+  "Role",
+  "Course Group",
+  "Course Name",
+  "Course Code",
+  "Page Title",
+  "Module Code",
+  "Module Name",
+  "Course Icon",
+  "Hex Colour",
+  "Background Image",
+  "Header Image",
+  "Is Story",
+  "Is Full Screen",
+  "Order",
+  "Navigation Style",
+  "Generated File Name",
+  "HTML URL",
+];
 
 export interface CsvRow {
   appName: string;
@@ -536,12 +680,18 @@ export interface CsvRow {
   courseName: string;
   courseCode: string;
   pageTitle: string;
+  moduleCode: string;
+  moduleName: string;
   courseIcon: string;
   hexColour: string;
   backgroundImage: string;
+  headerImage: string;
+  isStory: string;
+  isFullScreen: string;
+  order: string;
+  navigationStyle: string;
   fileName: string;
   htmlUrl: string;
-  schema: CsvSchema;
 }
 
 const csvEscape = (v: string) => {
@@ -554,40 +704,52 @@ export const buildCsvRows = (
   meta: Metadata,
   selectedRoles: Record<RoleKey, boolean> = DEFAULT_ROLES
 ): CsvRow[] => {
-  const asset = COURSE_ASSET_MAP[meta.courseCode] || {
-    courseGroup: "",
-    courseIcon: "",
-    hexColour: "",
-    backgroundImage: "",
-  };
-  const activeRoles = ROLE_OPTIONS.filter((r) => selectedRoles[r.key]);
+  const lib = COURSE_LIBRARY[meta.courseCode];
+  const courseGroup = lib?.courseGroup ?? "";
+  const courseName = lib?.courseName ?? meta.courseName ?? "";
+  const courseIcon = lib?.courseIcon ?? "";
+  const hexColour = lib?.hexColour ?? "";
+  const backgroundImage = lib?.backgroundImage ?? "";
+
+  const activeRoleKeys = (Object.keys(selectedRoles) as RoleKey[]).filter(
+    (k) => selectedRoles[k]
+  );
+
   const rows: CsvRow[] = [];
 
   files.forEach((f) => {
     const appKey = APP_NAME_TO_KEY[f.appName];
-    const cfg = appKey ? APP_CONFIGS[appKey] : APP_CONFIGS.ssZm;
-    const htmlUrl = `${cfg.azureBase}${f.fileName}`;
+    if (!appKey) return;
+    const cfgKey = APP_KEY_TO_CONFIG[appKey];
+    const cfg = APP_CONFIGS[cfgKey];
+    if (!cfg) return;
 
-    const rolesForApp: string[] = cfg.fixedRole
-      ? [cfg.fixedRole]
-      : activeRoles.length
-        ? activeRoles.map((r) => ROLE_LABEL_MAP[r.key])
-        : [""];
+    const htmlUrl = `${cfg.baseUrl}${f.fileName}`;
 
-    rolesForApp.forEach((role) => {
+    activeRoleKeys.forEach((roleKey) => {
+      const mappedRole = cfg.roles[roleKey];
+      // Skip if this app doesn't define a string for the selected role
+      if (!mappedRole) return;
+
       rows.push({
         appName: f.appName,
-        role,
-        courseGroup: asset.courseGroup,
-        courseName: meta.courseName,
+        role: mappedRole,
+        courseGroup,
+        courseName,
         courseCode: meta.courseCode,
         pageTitle: meta.pageTitle,
-        courseIcon: asset.courseIcon,
-        hexColour: cfg.themeColor || asset.hexColour,
-        backgroundImage: asset.backgroundImage,
+        moduleCode: "L1",
+        moduleName: "Level 1",
+        courseIcon,
+        hexColour,
+        backgroundImage,
+        headerImage: meta.headerImageUrl || "",
+        isStory: "False",
+        isFullScreen: "False",
+        order: "1",
+        navigationStyle: "Free",
         fileName: f.fileName,
         htmlUrl,
-        schema: cfg.schema,
       });
     });
   });
@@ -601,27 +763,30 @@ export const generateCSV = (
   selectedRoles: Record<RoleKey, boolean> = DEFAULT_ROLES
 ): string => {
   const rows = buildCsvRows(files, meta, selectedRoles);
-
-  // Group rows by schema so each app family has the right header set
-  const bySchema = new Map<CsvSchema, CsvRow[]>();
-  rows.forEach((r) => {
-    const list = bySchema.get(r.schema) || [];
-    list.push(r);
-    bySchema.set(r.schema, list);
-  });
-
-  const sections: string[] = [];
-  bySchema.forEach((list, schema) => {
-    const headers = SCHEMA_HEADERS[schema];
-    const headerLine = headers.join(",");
-    const lines = list.map((r) =>
-      [
-        r.appName, r.role, r.courseGroup, r.courseName, r.courseCode, r.pageTitle,
-        r.courseIcon, r.hexColour, r.backgroundImage, r.fileName, r.htmlUrl,
-      ].map(csvEscape).join(",")
-    );
-    sections.push([headerLine, ...lines].join("\n"));
-  });
-
-  return sections.join("\n\n");
+  const headerLine = CSV_HEADERS.join(",");
+  const lines = rows.map((r) =>
+    [
+      r.appName,
+      r.role,
+      r.courseGroup,
+      r.courseName,
+      r.courseCode,
+      r.pageTitle,
+      r.moduleCode,
+      r.moduleName,
+      r.courseIcon,
+      r.hexColour,
+      r.backgroundImage,
+      r.headerImage,
+      r.isStory,
+      r.isFullScreen,
+      r.order,
+      r.navigationStyle,
+      r.fileName,
+      r.htmlUrl,
+    ]
+      .map(csvEscape)
+      .join(",")
+  );
+  return [headerLine, ...lines].join("\n");
 };
