@@ -757,36 +757,93 @@ export const buildCsvRows = (
   return rows;
 };
 
-export const generateCSV = (
-  files: GeneratedFile[],
-  meta: Metadata,
-  selectedRoles: Record<RoleKey, boolean> = DEFAULT_ROLES
-): string => {
-  const rows = buildCsvRows(files, meta, selectedRoles);
-  const headerLine = CSV_HEADERS.join(",");
-  const lines = rows.map((r) =>
-    [
-      r.appName,
-      r.role,
-      r.courseGroup,
-      r.courseName,
-      r.courseCode,
-      r.pageTitle,
-      r.moduleCode,
-      r.moduleName,
-      r.courseIcon,
-      r.hexColour,
-      r.backgroundImage,
-      r.headerImage,
-      r.isStory,
-      r.isFullScreen,
-      r.order,
-      r.navigationStyle,
-      r.fileName,
-      r.htmlUrl,
-    ]
-      .map(csvEscape)
-      .join(",")
-  );
-  return [headerLine, ...lines].join("\n");
+export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRoles: Record<string, boolean> = {}): string => {
+  const allRows: string[] = [];
+  let headerGenerated = false;
+
+  files.forEach((file) => {
+    const appKey = file.appKey;
+    const config = APP_CONFIGS[appKey];
+    
+    if (!config) return;
+
+    // Use the exact app-specific columns from our previous schema setup
+    // (Falling back to the standard Safer Schools columns if not specified)
+    const columns = config.columns || [
+      "Role ", "Course Group", "Course Group Icon", "Course Name", "Course Icon", 
+      "Course Code", "Module Code", "Module Name", "Page Title", "PageIcon", 
+      "HTMLURL", "HeaderImageURL", "Video ID", "Colour", "Background Image", 
+      "Course Group Background Image", "Course Tile Background Image", 
+      "Is Story", "Is Full Screen", "Order", "Progress Style", "Navigation Style"
+    ];
+
+    if (!headerGenerated) {
+      allRows.push(columns.join(","));
+      headerGenerated = true;
+    }
+
+    // 1. PULL FROM THE MASTER DATABASE (Not mock data!)
+    const courseData = COURSE_LIBRARY[meta.courseCode] || {
+      group: "",
+      name: "",
+      color: "",
+      icon: ""
+    };
+
+    // 2. GENERATE A ROW FOR EVERY TICKED ROLE FOR THIS APP
+    const availableRolesInApp = config.roles || {};
+    
+    Object.keys(selectedRoles).forEach((roleKey) => {
+      // Only generate if the user ticked the box AND the app actually supports that role
+      if (selectedRoles[roleKey] && availableRolesInApp[roleKey]) {
+        const exactRoleName = availableRolesInApp[roleKey];
+        
+        const rowData = columns.map(col => {
+          const cleanCol = col.trim().toLowerCase();
+          
+          // Role & URLs
+          if (cleanCol === "role" || cleanCol === "role ") return exactRoleName;
+          if (cleanCol === "htmlurl" || cleanCol === "html url") return `${config.baseUrl}${file.fileName}`;
+          
+          // Inputs from UI
+          if (cleanCol === "page title") return meta.pageTitle;
+          if (cleanCol === "course code") return meta.courseCode;
+          if (cleanCol === "headerimageurl" || cleanCol === "header image url") return meta.headerImageUrl || "";
+          
+          // Master Database Matches (The part Lovable messed up)
+          if (cleanCol === "course group") return courseData.group;
+          if (cleanCol === "course name") return courseData.name;
+          if (cleanCol === "colour") return courseData.color;
+          
+          // Icons
+          if (cleanCol === "course icon" || cleanCol === "pageicon" || cleanCol === "page icon") {
+             // If we are in NI, dynamically swap the assets folder path
+             if (appKey === "northernIreland" && courseData.icon) {
+                 return courseData.icon.replace("/assets/icons/", "/northernireland/assets/tile_icons/");
+             }
+             return courseData.icon;
+          }
+          
+          // Static Defaults
+          if (cleanCol === "module code") return "L1";
+          if (cleanCol === "module name") return "Level 1";
+          if (cleanCol === "is story") return "False";
+          if (cleanCol === "is full screen") return "False";
+          if (cleanCol === "order") return "1";
+          if (cleanCol === "navigation style") return "Free";
+          
+          // Blank fields
+          return ""; 
+        });
+
+        // Escape commas for CSV
+        allRows.push(rowData.map(v => {
+            const s = String(v || "");
+            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        }).join(","));
+      }
+    });
+  });
+
+  return allRows.join("\n");
 };
