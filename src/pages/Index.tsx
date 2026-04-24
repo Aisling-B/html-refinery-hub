@@ -12,14 +12,19 @@ import { ModeToggle } from "@/components/mode-toggle";
 import {
   generateFiles,
   generateCSV,
+  buildCsvRows,
   DEFAULT_SHELLS,
   APP_OPTIONS,
   DEFAULT_SELECTION,
+  ROLE_OPTIONS,
+  DEFAULT_ROLES,
   type GeneratedFile,
   type Metadata,
   type RegionalSnippets,
   type AppSelection,
   type AppKey,
+  type RoleKey,
+  type CsvRow,
 } from "@/lib/contentGenerator";
 
 const Index = () => {
