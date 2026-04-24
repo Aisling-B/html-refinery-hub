@@ -308,6 +308,35 @@ const Index = () => {
                 </li>
               </ul>
 
+              {csvRows.length > 0 && (
+                <div className="mb-5 rounded-lg border border-border overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
+                    <p className="text-xs font-medium">CSV Preview</p>
+                    <p className="text-xs text-muted-foreground">{csvRows.length} rows · showing first 8</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/20">
+                        <tr className="text-left">
+                          <th className="px-3 py-2 font-medium">Role</th>
+                          <th className="px-3 py-2 font-medium">Course</th>
+                          <th className="px-3 py-2 font-medium">URL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvRows.slice(0, 8).map((r, i) => (
+                          <tr key={i} className="border-t border-border">
+                            <td className="px-3 py-2 whitespace-nowrap">{r.role || "—"}</td>
+                            <td className="px-3 py-2 truncate max-w-[140px]">{r.courseName}</td>
+                            <td className="px-3 py-2 truncate max-w-[260px] font-mono text-muted-foreground">{r.htmlUrl}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               <Button
                 onClick={handleDownload}
                 disabled={!generated}
