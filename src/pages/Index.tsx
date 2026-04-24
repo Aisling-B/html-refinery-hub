@@ -35,6 +35,7 @@ const Index = () => {
     courseCode: "",
     pageTitle: "",
     topicClassName: "",
+    headerImageUrl: "",
   });
   const [snippets, setSnippets] = useState<RegionalSnippets>({
     england: "",
@@ -176,6 +177,11 @@ const Index = () => {
                   <Label htmlFor="topicClassName" className="mb-1.5 block">Topic Class Name (CSS)</Label>
                   <Input id="topicClassName" value={meta.topicClassName} onChange={(e) => setMeta({ ...meta, topicClassName: e.target.value })} placeholder="hottopics" />
                 </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="headerImageUrl" className="mb-1.5 block">Header Image URL</Label>
+                  <Input id="headerImageUrl" value={meta.headerImageUrl} onChange={(e) => setMeta({ ...meta, headerImageUrl: e.target.value })} placeholder="https://.../header.jpg" />
+                  <p className="mt-1 text-xs text-muted-foreground">Header images are unique per page, not per course.</p>
+                </div>
               </div>
 
               <div className="pt-2">
@@ -242,7 +248,7 @@ const Index = () => {
                   One CSV row per role × file
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {ROLE_OPTIONS.map((opt) => (
                   <label
                     key={opt.key}
@@ -259,7 +265,7 @@ const Index = () => {
                 ))}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Note: Bromley & Fostering use fixed roles ("Special Guardianship", "Non Kinship Foster Carer") and ignore this selection.
+                Each app maps these generic roles to its own labels. If an app doesn't support a selected role, that row is skipped.
               </p>
             </Card>
 
