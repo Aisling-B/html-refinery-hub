@@ -65,10 +65,12 @@ const Index = () => {
         toast.error("No apps selected", { description: "Tick at least one app to generate." });
         return;
       }
-      const csvData = generateCSV(files, meta);
+      const csvData = generateCSV(files, meta, roles);
+      const rows = buildCsvRows(files, meta, roles);
       setGenerated(files);
       setCsv(csvData);
-      toast.success(`${files.length} files generated`, { description: "Ready to download as a ZIP bundle." });
+      setCsvRows(rows);
+      toast.success(`${files.length} files generated`, { description: `${rows.length} CSV rows ready.` });
     } catch (err) {
       console.error(err);
       toast.error("Generation failed", { description: "Could not parse the provided HTML." });
