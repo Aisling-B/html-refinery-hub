@@ -568,6 +568,13 @@ export const APP_CONFIGS: Record<string, AppConfig> = {
       parentSecondary: "Special Guardianship, Foster Carer - Connected Persons",
     },
   },
+    fosteringInADigitalWorld: {
+    baseUrl: "https://able3content.blob.core.windows.net/fostering-in-digital-world/HTML%20Files/",
+    roles: {
+      staffSecondary: "Social Worker",
+      parentSecondary: "Non Kinship Foster Carer, Kinship Foster Carer",
+    },
+  },
 };
 
 // Map our internal AppKey → master APP_CONFIGS key
@@ -582,7 +589,7 @@ const APP_KEY_TO_CONFIG: Record<AppKey, string> = {
   ssni: "northernIreland",
   davidGame: "davidGame",
   bromley: "bromley",
-  fostering: "bromley", // fostering shares no master entry; fallback (unused for HTML URL header)
+  fostering: "fosteringInADigitalWorld", 
 };
 
 const APP_NAME_TO_KEY: Record<string, AppKey> = APP_OPTIONS.reduce((acc, o) => {
