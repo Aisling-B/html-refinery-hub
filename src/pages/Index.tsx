@@ -237,6 +237,34 @@ const Index = () => {
 
             <Card className="p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">User Roles</h2>
+                <span className="text-xs text-muted-foreground">
+                  One CSV row per role × file
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.key}
+                    htmlFor={`role-${opt.key}`}
+                    className="flex items-center gap-2 rounded-md border border-border px-3 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+                  >
+                    <Checkbox
+                      id={`role-${opt.key}`}
+                      checked={roles[opt.key]}
+                      onCheckedChange={() => toggleRole(opt.key)}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Note: Bromley & Fostering use fixed roles ("Special Guardianship", "Non Kinship Foster Carer") and ignore this selection.
+              </p>
+            </Card>
+
+            <Card className="p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Output</h2>
                 <span className="text-xs text-muted-foreground">{generated ? `${generated.length} files + CSV` : "Awaiting generation"}</span>
               </div>
