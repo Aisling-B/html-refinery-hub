@@ -762,14 +762,17 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
   let headerGenerated = false;
 
   files.forEach((file) => {
-    const appKey = file.appKey;
-    const config = APP_CONFIGS[appKey];
+    // 1. FIXED: Find the correct app config using the file's appName
+    const internalAppKey = APP_NAME_TO_KEY[file.appName];
+    if (!internalAppKey) return;
+    
+    const configKey = APP_KEY_TO_CONFIG[internalAppKey];
+    const config = APP_CONFIGS[configKey];
     
     if (!config) return;
 
-    // Use the exact app-specific columns from our previous schema setup
-    // (Falling back to the standard Safer Schools columns if not specified)
-    const columns = config.columns || [
+    // Use the exact 22 app-specific columns for your backend
+    const columns = [
       "Role ", "Course Group", "Course Group Icon", "Course Name", "Course Icon", 
       "Course Code", "Module Code", "Module Name", "Page Title", "PageIcon", 
       "HTMLURL", "HeaderImageURL", "Video ID", "Colour", "Background Image", 
@@ -782,21 +785,20 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
       headerGenerated = true;
     }
 
-    // 1. PULL FROM THE MASTER DATABASE (Not mock data!)
+    // 2. FIXED: Pull from the Master Database using Lovable's exact variable names
     const courseData = COURSE_LIBRARY[meta.courseCode] || {
-      group: "",
-      name: "",
-      color: "",
-      icon: ""
+      courseGroup: "",
+      courseName: "",
+      hexColour: "",
+      courseIcon: ""
     };
 
-    // 2. GENERATE A ROW FOR EVERY TICKED ROLE FOR THIS APP
     const availableRolesInApp = config.roles || {};
     
     Object.keys(selectedRoles).forEach((roleKey) => {
-      // Only generate if the user ticked the box AND the app actually supports that role
-      if (selectedRoles[roleKey] && availableRolesInApp[roleKey]) {
-        const exactRoleName = availableRolesInApp[roleKey];
+      // Only generate if the user ticked the box AND the app supports that role
+      if (selectedRoles[roleKey] && availableRolesInApp[roleKey as RoleKey]) {
+        const exactRoleName = availableRolesInApp[roleKey as RoleKey];
         
         const rowData = columns.map(col => {
           const cleanCol = col.trim().toLowerCase();
@@ -810,18 +812,19 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
           if (cleanCol === "course code") return meta.courseCode;
           if (cleanCol === "headerimageurl" || cleanCol === "header image url") return meta.headerImageUrl || "";
           
-          // Master Database Matches (The part Lovable messed up)
-          if (cleanCol === "course group") return courseData.group;
-          if (cleanCol === "course name") return courseData.name;
-          if (cleanCol === "colour") return courseData.color;
+          // Master Database Matches
+          if (cleanCol === "course group") return courseData.courseGroup;
+          if (cleanCol === "course name") return courseData.courseName || meta.courseName;
+          if (cleanCol === "colour") return courseData.hexColour;
           
           // Icons
           if (cleanCol === "course icon" || cleanCol === "pageicon" || cleanCol === "page icon") {
-             // If we are in NI, dynamically swap the assets folder path
-             if (appKey === "northernIreland" && courseData.icon) {
-                 return courseData.icon.replace("/assets/icons/", "/northernireland/assets/tile_icons/");
+             let iconPath = courseData.courseIcon || "";
+             // Automatically swap the asset path for NI
+             if (internalAppKey === "ssni" && iconPath) {
+                 iconPath = iconPath.replace("/assets/icons/", "/northernireland/assets/tile_icons/");
              }
-             return courseData.icon;
+             return iconPath;
           }
           
           // Static Defaults
@@ -832,7 +835,6 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
           if (cleanCol === "order") return "1";
           if (cleanCol === "navigation style") return "Free";
           
-          // Blank fields
           return ""; 
         });
 
