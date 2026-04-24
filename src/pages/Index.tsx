@@ -12,14 +12,19 @@ import { ModeToggle } from "@/components/mode-toggle";
 import {
   generateFiles,
   generateCSV,
+  buildCsvRows,
   DEFAULT_SHELLS,
   APP_OPTIONS,
   DEFAULT_SELECTION,
+  ROLE_OPTIONS,
+  DEFAULT_ROLES,
   type GeneratedFile,
   type Metadata,
   type RegionalSnippets,
   type AppSelection,
   type AppKey,
+  type RoleKey,
+  type CsvRow,
 } from "@/lib/contentGenerator";
 
 const Index = () => {
@@ -39,8 +44,10 @@ const Index = () => {
     isleOfMan: "",
   });
   const [selection, setSelection] = useState<AppSelection>(DEFAULT_SELECTION);
+  const [roles, setRoles] = useState<Record<RoleKey, boolean>>(DEFAULT_ROLES);
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
+  const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
 
   const handleGenerate = () => {
     if (!baseHTML.trim()) {
@@ -58,10 +65,12 @@ const Index = () => {
         toast.error("No apps selected", { description: "Tick at least one app to generate." });
         return;
       }
-      const csvData = generateCSV(files, meta);
+      const csvData = generateCSV(files, meta, roles);
+      const rows = buildCsvRows(files, meta, roles);
       setGenerated(files);
       setCsv(csvData);
-      toast.success(`${files.length} files generated`, { description: "Ready to download as a ZIP bundle." });
+      setCsvRows(rows);
+      toast.success(`${files.length} files generated`, { description: `${rows.length} CSV rows ready.` });
     } catch (err) {
       console.error(err);
       toast.error("Generation failed", { description: "Could not parse the provided HTML." });
@@ -87,6 +96,10 @@ const Index = () => {
 
   const toggleApp = (key: AppKey) => {
     setSelection((s) => ({ ...s, [key]: !s[key] }));
+  };
+
+  const toggleRole = (key: RoleKey) => {
+    setRoles((r) => ({ ...r, [key]: !r[key] }));
   };
 
   const signpostingFields: { key: keyof RegionalSnippets; label: string }[] = [
@@ -224,6 +237,34 @@ const Index = () => {
 
             <Card className="p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">User Roles</h2>
+                <span className="text-xs text-muted-foreground">
+                  One CSV row per role × file
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.key}
+                    htmlFor={`role-${opt.key}`}
+                    className="flex items-center gap-2 rounded-md border border-border px-3 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+                  >
+                    <Checkbox
+                      id={`role-${opt.key}`}
+                      checked={roles[opt.key]}
+                      onCheckedChange={() => toggleRole(opt.key)}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Note: Bromley & Fostering use fixed roles ("Special Guardianship", "Non Kinship Foster Carer") and ignore this selection.
+              </p>
+            </Card>
+
+            <Card className="p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Output</h2>
                 <span className="text-xs text-muted-foreground">{generated ? `${generated.length} files + CSV` : "Awaiting generation"}</span>
               </div>
@@ -266,6 +307,35 @@ const Index = () => {
                   <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
                 </li>
               </ul>
+
+              {csvRows.length > 0 && (
+                <div className="mb-5 rounded-lg border border-border overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
+                    <p className="text-xs font-medium">CSV Preview</p>
+                    <p className="text-xs text-muted-foreground">{csvRows.length} rows · showing first 8</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/20">
+                        <tr className="text-left">
+                          <th className="px-3 py-2 font-medium">Role</th>
+                          <th className="px-3 py-2 font-medium">Course</th>
+                          <th className="px-3 py-2 font-medium">URL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvRows.slice(0, 8).map((r, i) => (
+                          <tr key={i} className="border-t border-border">
+                            <td className="px-3 py-2 whitespace-nowrap">{r.role || "—"}</td>
+                            <td className="px-3 py-2 truncate max-w-[140px]">{r.courseName}</td>
+                            <td className="px-3 py-2 truncate max-w-[260px] font-mono text-muted-foreground">{r.htmlUrl}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               <Button
                 onClick={handleDownload}
