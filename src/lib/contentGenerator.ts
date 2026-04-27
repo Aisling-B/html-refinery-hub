@@ -252,6 +252,19 @@ const replaceFosteringButtons = (root: Document) => {
 };
 
 // --- DYNAMIC FILENAME HELPERS ---
+export const ROLE_TO_AUDIENCE: Record<RoleKey, string> = {
+  staffPrimary: "ad",
+  staffSecondary: "ad",
+  parentPrimary: "ad",
+  parentSecondary: "ad",
+  sgPrimary: "ad",
+  sgSecondary: "ad",
+  pupilPrimary: "pupil_ks2",
+  pupilLower: "pupil_lower_secondary",
+  pupilMiddle: "pupil_middle",
+  pupilUpper: "upper_secondary",
+};
+
 const getCourseAbbreviation = (code: string) => {
   const prefixes = ["ENG", "SCOT", "WAL", "IOM", "GST", "NBA", "DG", "DE", "BP", "CHSCT", "CHSC"];
   let suffix = code || "";
@@ -264,23 +277,14 @@ const getCourseAbbreviation = (code: string) => {
   return suffix.toLowerCase();
 };
 
-// NEW: The App looks at your checked boxes to calculate the filename prefix!
-const getAudience = (roles: Record<string, boolean>) => {
-  if (roles.pupilPrimary) return "pupil_ks2";
-  if (roles.pupilLower) return "pupil_lower_secondary";
-  if (roles.pupilMiddle) return "pupil_middle";
-  if (roles.pupilUpper) return "upper_secondary";
-  return "ad"; // If no pupil roles are checked, it defaults to Adults (Staff/Parents/SG)
-};
-
-const getFilenamePrefix = (appKey: AppKey, audience: string) => {
+const getFilenamePrefix = (appKey: AppKey, audienceTarget: string) => {
   let appPrefix = "educ";
   if (appKey === "davidGame") appPrefix = "dgc";
   else if (appKey === "bromley") appPrefix = "brom_perm";
   else if (appKey === "fostering") appPrefix = "hsct";
 
-  let roleStr = audience;
-  if (appKey === "fostering" && audience === "ad") roleStr = "fc";
+  let roleStr = audienceTarget;
+  if (appKey === "fostering" && audienceTarget === "ad") roleStr = "fc";
 
   if (!roleStr) return appPrefix;
   return `${appPrefix}_${roleStr}`;
@@ -290,13 +294,20 @@ export const generateFiles = (
   baseHTML: string,
   meta: Metadata,
   snippets: RegionalSnippets,
-  roles: Record<string, boolean>, // NEW: We pass the checked roles into the generator
+  roles: Record<string, boolean>,
   shells: AppShells = DEFAULT_SHELLS,
   selection: AppSelection = DEFAULT_SELECTION
 ): GeneratedFile[] => {
   const { courseCode, topicClassName } = meta;
 
-  const audienceStr = getAudience(roles);
+  // 1. Find every unique audience prefix you checked!
+  const activeAudiences = new Set<string>();
+  (Object.keys(roles) as RoleKey[]).forEach((roleKey) => {
+    if (roles[roleKey]) {
+      activeAudiences.add(ROLE_TO_AUDIENCE[roleKey]);
+    }
+  });
+  if (activeAudiences.size === 0) activeAudiences.add("ad"); // Failsafe fallback
 
   const englandHTML = injectRegional(baseHTML, snippets.england, topicClassName);
   const niHTML = injectRegional(baseHTML, snippets.northernIreland, topicClassName);
@@ -313,67 +324,55 @@ export const generateFiles = (
 
   const out: GeneratedFile[] = [];
 
-  const buildName = (appKey: AppKey, suffix: string) => {
-    const prefix = getFilenamePrefix(appKey, audienceStr);
-    const course = getCourseAbbreviation(meta.courseCode);
-    const safeTitle = (meta.pageTitle || "page").toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
-    const rawName = `${prefix}_${course}_${safeTitle}${suffix}.html`;
-    return rawName.replace(/_+/g, '_'); 
-  };
+  // 2. Generate a distinct HTML file for EACH audience selected!
+  Array.from(activeAudiences).forEach((audienceTarget) => {
+    const buildName = (appKey: AppKey, suffix: string) => {
+      const prefix = getFilenamePrefix(appKey, audienceTarget);
+      const course = getCourseAbbreviation(meta.courseCode);
+      const safeTitle = (meta.pageTitle || "page").toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+      const rawName = `${prefix}_${course}_${safeTitle}${suffix}.html`;
+      return rawName.replace(/_+/g, '_'); 
+    };
 
-  if (selection.ssZm) {
-    out.push({ appName: "Safer Schools ZM", fileName: buildName("ssZm", "_all"), content: englandHTML, mime: "text/html" });
-  }
+    if (selection.ssZm) out.push({ appName: "Safer Schools ZM", fileName: buildName("ssZm", "_all"), content: englandHTML, mime: "text/html", audienceTarget });
+    if (selection.ssEng) out.push({ appName: "Safer Schools England", fileName: buildName("ssEng", allRegionalEmpty ? "_all" : "_eng"), content: englandHTML, mime: "text/html", audienceTarget });
+    if (selection.ssScot) out.push({ appName: "Safer Schools Scotland", fileName: buildName("ssScot", allRegionalEmpty ? "_all" : "_scot"), content: scotlandHTML, mime: "text/html", audienceTarget });
+    if (selection.ssWales) out.push({ appName: "Safer Schools Wales", fileName: buildName("ssWales", allRegionalEmpty ? "_all" : "_wales"), content: walesHTML, mime: "text/html", audienceTarget });
+    if (selection.ssIom) out.push({ appName: "Safer Schools Isle of Man", fileName: buildName("ssIom", allRegionalEmpty ? "_all" : "_iom"), content: iomHTML, mime: "text/html", audienceTarget });
 
-  if (selection.ssEng) {
-    out.push({ appName: "Safer Schools England", fileName: buildName("ssEng", allRegionalEmpty ? "_all" : "_eng"), content: englandHTML, mime: "text/html" });
-  }
-  if (selection.ssScot) {
-    out.push({ appName: "Safer Schools Scotland", fileName: buildName("ssScot", allRegionalEmpty ? "_all" : "_scot"), content: scotlandHTML, mime: "text/html" });
-  }
-  if (selection.ssWales) {
-    out.push({ appName: "Safer Schools Wales", fileName: buildName("ssWales", allRegionalEmpty ? "_all" : "_wales"), content: walesHTML, mime: "text/html" });
-  }
-  if (selection.ssIom) {
-    out.push({ appName: "Safer Schools Isle of Man", fileName: buildName("ssIom", allRegionalEmpty ? "_all" : "_iom"), content: iomHTML, mime: "text/html" });
-  }
+    if (selection.gst) out.push({ appName: "Great Schools Trust", fileName: buildName("gst", "_GST"), content: englandHTML, mime: "text/html", audienceTarget });
+    if (selection.nba) out.push({ appName: "North Birmingham Academy", fileName: buildName("nba", "_NBA"), content: englandHTML, mime: "text/html", audienceTarget });
 
-  if (selection.gst) {
-    out.push({ appName: "Great Schools Trust", fileName: buildName("gst", "_GST"), content: englandHTML, mime: "text/html" });
-  }
-  if (selection.nba) {
-    out.push({ appName: "North Birmingham Academy", fileName: buildName("nba", "_NBA"), content: englandHTML, mime: "text/html" });
-  }
+    if (selection.ssni) {
+      const ssniDoc = parseHTML(niHTML);
+      swapClass(ssniDoc, topicClassName, "deniblue");
+      out.push({ appName: "Safer Schools NI", fileName: buildName("ssni", "_deni"), content: serializeFullDoc(ssniDoc), mime: "text/html", audienceTarget });
+    }
 
-  if (selection.ssni) {
-    const ssniDoc = parseHTML(niHTML);
-    swapClass(ssniDoc, topicClassName, "deniblue");
-    out.push({ appName: "Safer Schools NI", fileName: buildName("ssni", "_deni"), content: serializeFullDoc(ssniDoc), mime: "text/html" });
-  }
+    if (selection.davidGame) {
+      const dgDoc = parseHTML(englandHTML);
+      swapClass(dgDoc, topicClassName, "davidgamegreen");
+      fixImagePathsDavidGame(dgDoc);
+      out.push({ appName: "David Game College", fileName: buildName("davidGame", "_davidgame"), content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)), mime: "text/html", audienceTarget });
+    }
 
-  if (selection.davidGame) {
-    const dgDoc = parseHTML(englandHTML);
-    swapClass(dgDoc, topicClassName, "davidgamegreen");
-    fixImagePathsDavidGame(dgDoc);
-    out.push({ appName: "David Game College", fileName: buildName("davidGame", "_davidgame"), content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)), mime: "text/html" });
-  }
+    if (selection.bromley) {
+      const bromDoc = parseHTML(englandHTML);
+      swapClass(bromDoc, topicClassName, "bromgreen");
+      fixImagePathsStripped(bromDoc);
+      out.push({ appName: "Bromley Permanency", fileName: buildName("bromley", "_bromley"), content: injectBody(shells.bromley, serializeBodyInner(bromDoc)), mime: "text/html", audienceTarget });
+    }
 
-  if (selection.bromley) {
-    const bromDoc = parseHTML(englandHTML);
-    swapClass(bromDoc, topicClassName, "bromgreen");
-    fixImagePathsStripped(bromDoc);
-    out.push({ appName: "Bromley Permanency", fileName: buildName("bromley", "_bromley"), content: injectBody(shells.bromley, serializeBodyInner(bromDoc)), mime: "text/html" });
-  }
-
-  if (selection.fostering) {
-    const fosDoc = parseHTML(niHTML);
-    const fosteringClass = HSCT_CLASS_MAP[courseCode] || "hsc-general";
-    swapClass(fosDoc, topicClassName, fosteringClass);
-    fixImagePathsStripped(fosDoc);
-    replaceFosteringButtons(fosDoc);
-    const fosteringShell = (shells.fostering || "").split("[INSERT_SECTION_CODE]").join(fosteringClass);
-    out.push({ appName: "Fostering in a Digital World", fileName: buildName("fostering", "_fostering"), content: injectBody(fosteringShell, serializeBodyInner(fosDoc)), mime: "text/html" });
-  }
+    if (selection.fostering) {
+      const fosDoc = parseHTML(niHTML);
+      const fosteringClass = HSCT_CLASS_MAP[courseCode] || "hsc-general";
+      swapClass(fosDoc, topicClassName, fosteringClass);
+      fixImagePathsStripped(fosDoc);
+      replaceFosteringButtons(fosDoc);
+      const fosteringShell = (shells.fostering || "").split("[INSERT_SECTION_CODE]").join(fosteringClass);
+      out.push({ appName: "Fostering in a Digital World", fileName: buildName("fostering", "_fostering"), content: injectBody(fosteringShell, serializeBodyInner(fosDoc)), mime: "text/html", audienceTarget });
+    }
+  });
 
   return out;
 };
@@ -931,7 +930,7 @@ export const buildCsvRows = (
   return rows;
 };
 
-// --- 1. THE TRANSLATOR BRAIN ---
+// --- THE TRANSLATOR BRAIN ---
 const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): string => {
   let suffix = baseCode;
   const prefixes = ["ENG", "SCOT", "WAL", "IOM", "GST", "NBA", "DG", "DE", "BP", "CHSCT", "CHSC"];
@@ -950,7 +949,6 @@ const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): str
 
   const newPrefix = prefixMap[internalAppKey] || "ENG";
   
-  // Edge cases for Fostering & Bromley's irregular codes
   if (internalAppKey === "fostering") {
     if (suffix === "HW") return "CHSCHW";
     if (suffix === "IS") return "CHSCIS";
@@ -963,13 +961,11 @@ const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): str
   return newPrefix + suffix;
 };
 
-// --- 2. SMART ASSET GENERATOR ---
+// --- SMART ASSET GENERATOR ---
 const getGroupIcon = (courseGroup: string, internalAppKey: AppKey): string => {
     const group = (courseGroup || "").toLowerCase();
     
-    if (internalAppKey === "bromley") {
-        return "https://ableportaldev.blob.core.windows.net/bromleypermanency/master_icons/coursegroupicon.png";
-    }
+    if (internalAppKey === "bromley") return "https://ableportaldev.blob.core.windows.net/bromleypermanency/master_icons/coursegroupicon.png";
     if (internalAppKey === "fostering") {
         if (group.includes("child")) return "https://able3content.blob.core.windows.net/fostering-in-digital-world/Images/online_safety_icons/hsct_child_exploitation.png";
         return "https://able3content.blob.core.windows.net/fostering-in-digital-world/Images/online_safety_icons/hsct_online_safety_advice.png";
@@ -978,18 +974,10 @@ const getGroupIcon = (courseGroup: string, internalAppKey: AppKey): string => {
     let folder = "https://saferschoolscontent.blob.core.windows.net/assets/icons/";
     let filePrefix = "ss_";
     
-    if (internalAppKey === "ssni") {
-        folder = "https://saferschoolscontent.blob.core.windows.net/northernireland/assets/tile_icons/";
-    } else if (internalAppKey === "gst") {
-        folder = "https://able3content.blob.core.windows.net/great-schools-trust/assets/icons/";
-        filePrefix = "gst_";
-    } else if (internalAppKey === "nba") {
-        folder = "https://able3content.blob.core.windows.net/north-birmingham-academy/assets/icons/";
-        filePrefix = "nba_";
-    } else if (internalAppKey === "davidGame") {
-        folder = "https://able3content.blob.core.windows.net/david-game-college/dgc_assets/online_safety_icons/";
-        filePrefix = "dgc_";
-    }
+    if (internalAppKey === "ssni") folder = "https://saferschoolscontent.blob.core.windows.net/northernireland/assets/tile_icons/";
+    else if (internalAppKey === "gst") { folder = "https://able3content.blob.core.windows.net/great-schools-trust/assets/icons/"; filePrefix = "gst_"; }
+    else if (internalAppKey === "nba") { folder = "https://able3content.blob.core.windows.net/north-birmingham-academy/assets/icons/"; filePrefix = "nba_"; }
+    else if (internalAppKey === "davidGame") { folder = "https://able3content.blob.core.windows.net/david-game-college/dgc_assets/online_safety_icons/"; filePrefix = "dgc_"; }
     
     if (group.includes("online safety")) return folder + filePrefix + "online_safety.png";
     if (group.includes("professional")) return folder + filePrefix + "professional_dev.png";
@@ -999,7 +987,7 @@ const getGroupIcon = (courseGroup: string, internalAppKey: AppKey): string => {
     return "";
 };
 
-// --- 3. THE FIXED CSV GENERATOR ---
+// --- THE FIXED CSV GENERATOR ---
 export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRoles: Record<string, boolean> = {}): string => {
   const allRows: string[] = [];
 
@@ -1011,7 +999,6 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
     "Is Story", "Is Full Screen", "Order", "Progress Style", "Navigation Style"
   ];
 
-  // NEW: Pre-filter out any apps that DO NOT have this course in the master dictionary
   const validFiles = files.filter(file => {
       const internalAppKey = APP_NAME_TO_KEY[file.appName];
       if (!internalAppKey) return false;
@@ -1040,8 +1027,6 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
         if (!config) return;
 
         const appSpecificCode = getAppSpecificCourseCode(meta.courseCode, internalAppKey);
-        
-        // This is strictly guaranteed to exist because of our pre-filter above
         const courseData = COURSE_LIBRARY[appSpecificCode];
 
         let finalCourseIcon = courseData.courseIcon || "";
@@ -1054,6 +1039,10 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
         
         Object.keys(selectedRoles).forEach((roleKey) => {
           if (selectedRoles[roleKey] && availableRolesInApp[roleKey as RoleKey]) {
+            
+            // MAGIC: This ensures the CSV row strictly maps to the right HTML file!
+            if (ROLE_TO_AUDIENCE[roleKey as RoleKey] !== file.audienceTarget) return;
+
             const exactRoleName = availableRolesInApp[roleKey as RoleKey];
             
             const rowData = columns.map(col => {
@@ -1063,7 +1052,6 @@ export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRole
               if (cleanCol === "htmlurl" || cleanCol === "html url") return `${config.baseUrl}${file.fileName}`;
               if (cleanCol === "page title") return meta.pageTitle;
               
-              // Blanks out Header and Page Icon as requested
               if (cleanCol === "headerimageurl" || cleanCol === "header image url") return "";
               if (cleanCol === "pageicon" || cleanCol === "page icon") return "";
               
