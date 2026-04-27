@@ -340,8 +340,8 @@ export const generateFiles = (
     if (selection.ssWales) out.push({ appName: "Safer Schools Wales", fileName: buildName("ssWales", allRegionalEmpty ? "_all" : "_wales"), content: walesHTML, mime: "text/html", audienceTarget });
     if (selection.ssIom) out.push({ appName: "Safer Schools Isle of Man", fileName: buildName("ssIom", allRegionalEmpty ? "_all" : "_iom"), content: iomHTML, mime: "text/html", audienceTarget });
 
-    if (selection.gst) out.push({ appName: "Great Schools Trust", fileName: buildName("gst", "_GST"), content: englandHTML, mime: "text/html", audienceTarget });
-    if (selection.nba) out.push({ appName: "North Birmingham Academy", fileName: buildName("nba", "_NBA"), content: englandHTML, mime: "text/html", audienceTarget });
+    if (selection.gst) out.push({ appName: "Great Schools Trust", fileName: buildName("gst", "_gst"), content: englandHTML, mime: "text/html", audienceTarget });
+    if (selection.nba) out.push({ appName: "North Birmingham Academy", fileName: buildName("nba", "_nba"), content: englandHTML, mime: "text/html", audienceTarget });
 
     if (selection.ssni) {
       const ssniDoc = parseHTML(niHTML);
