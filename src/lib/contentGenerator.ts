@@ -4,7 +4,6 @@ export interface Metadata {
   courseCode: string;
   pageTitle: string;
   topicClassName: string;
-  headerImageUrl: string;
 }
 
 export interface RegionalSnippets {
@@ -930,7 +929,7 @@ export const buildCsvRows = (
         courseIcon,
         hexColour,
         backgroundImage,
-        headerImage: meta.headerImageUrl || "",
+        headerImage: "",
         isStory: "False",
         isFullScreen: "False",
         order: "1",
