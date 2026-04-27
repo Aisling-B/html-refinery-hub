@@ -30,8 +30,8 @@ import {
 
 const Index = () => {
   const [baseHTML, setBaseHTML] = useState("");
-  const [meta, setMeta] = useState<Metadata>({
-    baseFilename: "",
+const [meta, setMeta] = useState<Metadata>({
+    audience: "ad",
     courseName: "",
     courseCode: "",
     pageTitle: "",
@@ -99,7 +99,7 @@ const Index = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${meta.baseFilename || meta.courseCode || "content"}_bundle.zip`;
+    a.download = `${meta.courseCode || "content"}_bundle.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -222,10 +222,29 @@ const Index = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <Label htmlFor="baseFilename" className="mb-1.5 block">Base Filename</Label>
-                  <Input id="baseFilename" value={meta.baseFilename} onChange={(e) => setMeta({ ...meta, baseFilename: e.target.value })} placeholder="education_pupil_middle_ie_overview" />
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* UPGRADED: Dynamic Filename Builder */}
+                <div>
+                  <Label htmlFor="audience" className="mb-1.5 block">Audience / Role Target</Label>
+                  <select
+                    id="audience"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={meta.audience}
+                    onChange={(e) => setMeta({ ...meta, audience: e.target.value })}
+                  >
+                    <option value="ad">Adults (Staff, Parents, SG)</option>
+                    <option value="pupil_ks2">Pupil Primary (KS2)</option>
+                    <option value="pupil_lower_secondary">Pupil Lower Secondary</option>
+                    <option value="pupil_middle">Pupil Middle Secondary</option>
+                    <option value="upper_secondary">Pupil Upper Secondary</option>
+                  </select>
                 </div>
+
+                {/* UPGRADED: Smart Dropdown selector (Auto-fills Code, leaves CSS manual) */}
+                <div>
+                  <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
+                  <select
                 
                 {/* UPGRADED: Smart Dropdown selector */}
                 <div>
