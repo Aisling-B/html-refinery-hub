@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { CheckCircle2, Circle, Download, FileCode2, Sparkles } from "lucide-react";
+import { CheckCircle2, Circle, Download, FileCode2, Sparkles, HelpCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ModeToggle } from "@/components/mode-toggle";
 import {
   generateFiles,
@@ -139,7 +140,64 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Local, client-side HTML transformation & CSV tracker</p>
             </div>
           </div>
-          <ModeToggle />
+          
+          <div className="flex items-center gap-3">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 shadow-sm">
+                  <HelpCircle className="h-4 w-4" />
+                  How to Use
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">How to Use the Content Hub</DialogTitle>
+                  <DialogDescription>
+                    Follow these steps to auto-generate your app HTML and CSV tracker.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-5 text-sm mt-4">
+                  <div>
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">1</span> 
+                      Paste the HTML Template
+                    </h4>
+                    <p className="text-muted-foreground pl-7">Paste your base Safer Schools ZM 3.0 HTML. If you are using regional signposting, make sure to leave the <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">[INSERT_REGIONAL_SIGNPOSTING_HERE]</code> placeholder in your code.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">2</span> 
+                      Select the Course
+                    </h4>
+                    <p className="text-muted-foreground pl-7">Pick a course from the dropdown. The Hub's internal brain will automatically fetch the exact Course Code, Hex Colours, and proper Asset Folders for every single app.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">3</span> 
+                      Fill in Page Details
+                    </h4>
+                    <p className="text-muted-foreground pl-7">Provide the Base Filename, Page Title, and the CSS Topic Class Name (e.g., <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">hottopics</code>). Header Images and Page Icons will be intentionally left blank on your CSV for manual entry.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">4</span> 
+                      Select Apps and Roles
+                    </h4>
+                    <p className="text-muted-foreground pl-7">Tick the apps and user roles you want to generate. Don't worry about unchecking apps that don't offer the selected course—the Hub is smart enough to skip them automatically to keep your tracker clean!</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">5</span> 
+                      Generate and Download
+                    </h4>
+                    <p className="text-muted-foreground pl-7">Click Generate to build your HTML files and the master tracker CSV. Click download, and your cleanly formatted .ZIP bundle is ready for upload!</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <ModeToggle />
+          </div>
         </div>
       </header>
 
