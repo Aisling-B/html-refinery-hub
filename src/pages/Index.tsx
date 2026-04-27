@@ -89,16 +89,20 @@ const files = generateFiles(baseHTML, meta, snippets, roles, DEFAULT_SHELLS, sel
     }
   };
 
-  const handleDownload = async () => {
+const handleDownload = async () => {
     if (!generated) return;
     const zip = new JSZip();
     generated.forEach((f) => zip.file(f.fileName, f.content));
-    zip.file("Content_Tracker_Update.csv", csv);
+    zip.file("CSV_Lines_Update.csv", csv);
     const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${meta.courseCode || "content"}_bundle.zip`;
+    
+    // NEW: Safely format the Page Title to use as the ZIP file name!
+    const safeTitle = (meta.pageTitle || "content").toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+    a.download = `${safeTitle}_bundle.zip`;
+    
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
