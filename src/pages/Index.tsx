@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,24 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { CheckCircle2, Circle, Download, FileCode2, Sparkles } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import {
   generateFiles,
   generateCSV,
-  buildCsvRows,
   DEFAULT_SHELLS,
   APP_OPTIONS,
   DEFAULT_SELECTION,
   ROLE_OPTIONS,
   DEFAULT_ROLES,
+  COURSE_LIBRARY,
   type GeneratedFile,
   type Metadata,
   type RegionalSnippets,
   type AppSelection,
   type AppKey,
   type RoleKey,
-  type CsvRow,
 } from "@/lib/contentGenerator";
 
 const Index = () => {
@@ -47,7 +47,21 @@ const Index = () => {
   const [roles, setRoles] = useState<Record<RoleKey, boolean>>(DEFAULT_ROLES);
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
-  const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
+
+  // Dynamically build the Course Dropdown list from the Master Dictionary
+  const courseOptions = useMemo(() => {
+    const uniqueCoursesMap = new Map<string, string>();
+    Object.entries(COURSE_LIBRARY).forEach(([code, data]) => {
+      if (!data.courseName) return;
+      // Prefer standard "ENG" base codes for the auto-fill
+      if (code.startsWith("ENG") || !uniqueCoursesMap.has(data.courseName)) {
+        uniqueCoursesMap.set(data.courseName, code.startsWith("ENG") ? code : (uniqueCoursesMap.get(data.courseName) || code));
+      }
+    });
+    return Array.from(uniqueCoursesMap.entries())
+      .map(([name, code]) => ({ name, code }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
 
   const handleGenerate = () => {
     if (!baseHTML.trim()) {
@@ -66,11 +80,9 @@ const Index = () => {
         return;
       }
       const csvData = generateCSV(files, meta, roles);
-      const rows = buildCsvRows(files, meta, roles);
       setGenerated(files);
       setCsv(csvData);
-      setCsvRows(rows);
-      toast.success(`${files.length} files generated`, { description: `${rows.length} CSV rows ready.` });
+      toast.success(`${files.length} files generated`, { description: `Tracker CSV is ready.` });
     } catch (err) {
       console.error(err);
       toast.error("Generation failed", { description: "Could not parse the provided HTML." });
@@ -123,7 +135,7 @@ const Index = () => {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Content Auto-Formatter Prototype</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Content Auto-Formatter Hub</h1>
               <p className="text-xs text-muted-foreground">Local, client-side HTML transformation & CSV tracker</p>
             </div>
           </div>
@@ -136,23 +148,19 @@ const Index = () => {
           {/* Input column */}
           <Card className="p-6 shadow-[var(--shadow-card)]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Input</h2>
-              <span className="text-xs text-muted-foreground">All processing runs locally</span>
+              <h2 className="text-lg font-semibold">Input Content</h2>
             </div>
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="html" className="mb-1.5 block">Paste Safer Schools ZM 3.0 HTML Here as the template</Label>
+                <Label htmlFor="html" className="mb-1.5 block">Paste Safer Schools ZM 3.0 HTML Template</Label>
                 <Textarea
                   id="html"
                   value={baseHTML}
                   onChange={(e) => setBaseHTML(e.target.value)}
                   placeholder="<!DOCTYPE html>&#10;<html>...&#10;  [INSERT_REGIONAL_SIGNPOSTING_HERE]&#10;...</html>"
-                  className="min-h-[220px] font-mono text-xs resize-y"
+                  className="min-h-[200px] font-mono text-xs resize-y"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Tip: include <code className="font-mono">[INSERT_REGIONAL_SIGNPOSTING_HERE]</code> where regional content should be injected.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -160,14 +168,36 @@ const Index = () => {
                   <Label htmlFor="baseFilename" className="mb-1.5 block">Base Filename</Label>
                   <Input id="baseFilename" value={meta.baseFilename} onChange={(e) => setMeta({ ...meta, baseFilename: e.target.value })} placeholder="education_pupil_middle_ie_overview" />
                 </div>
+                
+                {/* UPGRADED: Smart Dropdown selector */}
                 <div>
                   <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
-                  <Input id="courseName" value={meta.courseName} onChange={(e) => setMeta({ ...meta, courseName: e.target.value })} placeholder="Hot Topics" />
+                  <select
+                    id="courseName"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={meta.courseName}
+                    onChange={(e) => {
+                      const selectedName = e.target.value;
+                      const selectedOption = courseOptions.find(o => o.name === selectedName);
+                      setMeta({ 
+                        ...meta, 
+                        courseName: selectedName, 
+                        courseCode: selectedOption ? selectedOption.code : meta.courseCode 
+                      });
+                    }}
+                  >
+                    <option value="" disabled>Select a course...</option>
+                    {courseOptions.map((opt) => (
+                      <option key={opt.code} value={opt.name}>{opt.name}</option>
+                    ))}
+                  </select>
                 </div>
+                
                 <div>
                   <Label htmlFor="courseCode" className="mb-1.5 block">Course Code</Label>
                   <Input id="courseCode" value={meta.courseCode} onChange={(e) => setMeta({ ...meta, courseCode: e.target.value })} placeholder="ENGHT" />
                 </div>
+                
                 <div>
                   <Label htmlFor="pageTitle" className="mb-1.5 block">Page Title</Label>
                   <Input id="pageTitle" value={meta.pageTitle} onChange={(e) => setMeta({ ...meta, pageTitle: e.target.value })} placeholder="Catching a Catfish" />
@@ -178,32 +208,41 @@ const Index = () => {
                 </div>
               </div>
 
+              {/* UPGRADED: Collapsible Accordion for Regional Snippets */}
               <div className="pt-2">
-                <h3 className="text-sm font-semibold mb-2">Regional Signposting Snippets</h3>
-                <div className="space-y-3">
-                  {signpostingFields.map((f) => (
-                    <div key={f.key}>
-                      <Label htmlFor={`sn-${f.key}`} className="mb-1.5 block">{f.label}</Label>
-                      <Textarea
-                        id={`sn-${f.key}`}
-                        value={snippets[f.key]}
-                        onChange={(e) => setSnippets({ ...snippets, [f.key]: e.target.value })}
-                        placeholder={`HTML to inject for ${f.label.replace(" Signposting", "")}`}
-                        className="min-h-[80px] font-mono text-xs resize-y"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="regional" className="border border-border rounded-lg bg-card px-4 shadow-sm">
+                    <AccordionTrigger className="text-sm font-semibold hover:no-underline py-3">
+                      Regional Signposting Snippets
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4 pt-1 pb-3">
+                        {signpostingFields.map((f) => (
+                          <div key={f.key}>
+                            <Label htmlFor={`sn-${f.key}`} className="mb-1.5 block">{f.label}</Label>
+                            <Textarea
+                              id={`sn-${f.key}`}
+                              value={snippets[f.key]}
+                              onChange={(e) => setSnippets({ ...snippets, [f.key]: e.target.value })}
+                              placeholder={`HTML to inject for ${f.label.replace(" Signposting", "")}`}
+                              className="min-h-[80px] font-mono text-xs resize-y"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
 
               <Button
                 onClick={handleGenerate}
                 size="lg"
-                className="w-full text-primary-foreground border-0 shadow-[var(--shadow-elegant)] hover:opacity-95 transition-opacity"
+                className="w-full mt-4 text-primary-foreground border-0 shadow-[var(--shadow-elegant)] hover:opacity-95 transition-opacity"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                Generate App Content
+                Generate Assets
               </Button>
             </div>
           </Card>
@@ -238,9 +277,6 @@ const Index = () => {
             <Card className="p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">User Roles</h2>
-                <span className="text-xs text-muted-foreground">
-                  One CSV row per role × file
-                </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {ROLE_OPTIONS.map((opt) => (
@@ -258,14 +294,11 @@ const Index = () => {
                   </label>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Each app maps these generic roles to its own labels. If an app doesn't support a selected role, that row is skipped.
-              </p>
             </Card>
 
             <Card className="p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Output</h2>
+                <h2 className="text-lg font-semibold">Ready to Export</h2>
                 <span className="text-xs text-muted-foreground">{generated ? `${generated.length} files + CSV` : "Awaiting generation"}</span>
               </div>
 
@@ -307,35 +340,6 @@ const Index = () => {
                   <FileCode2 className="h-4 w-4 text-muted-foreground shrink-0" />
                 </li>
               </ul>
-
-              {csvRows.length > 0 && (
-                <div className="mb-5 rounded-lg border border-border overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
-                    <p className="text-xs font-medium">CSV Preview</p>
-                    <p className="text-xs text-muted-foreground">{csvRows.length} rows · showing first 8</p>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted/20">
-                        <tr className="text-left">
-                          <th className="px-3 py-2 font-medium">Role</th>
-                          <th className="px-3 py-2 font-medium">Course</th>
-                          <th className="px-3 py-2 font-medium">URL</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {csvRows.slice(0, 8).map((r, i) => (
-                          <tr key={i} className="border-t border-border">
-                            <td className="px-3 py-2 whitespace-nowrap">{r.role || "—"}</td>
-                            <td className="px-3 py-2 truncate max-w-[140px]">{r.courseName}</td>
-                            <td className="px-3 py-2 truncate max-w-[260px] font-mono text-muted-foreground">{r.htmlUrl}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
 
               <Button
                 onClick={handleDownload}
