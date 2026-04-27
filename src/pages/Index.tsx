@@ -35,7 +35,6 @@ const Index = () => {
     courseCode: "",
     pageTitle: "",
     topicClassName: "",
-    headerImageUrl: "",
   });
   const [snippets, setSnippets] = useState<RegionalSnippets>({
     england: "",
@@ -176,11 +175,6 @@ const Index = () => {
                 <div>
                   <Label htmlFor="topicClassName" className="mb-1.5 block">Topic Class Name (CSS)</Label>
                   <Input id="topicClassName" value={meta.topicClassName} onChange={(e) => setMeta({ ...meta, topicClassName: e.target.value })} placeholder="hottopics" />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="headerImageUrl" className="mb-1.5 block">Header Image URL</Label>
-                  <Input id="headerImageUrl" value={meta.headerImageUrl} onChange={(e) => setMeta({ ...meta, headerImageUrl: e.target.value })} placeholder="https://.../header.jpg" />
-                  <p className="mt-1 text-xs text-muted-foreground">Header images are unique per page, not per course.</p>
                 </div>
               </div>
 
