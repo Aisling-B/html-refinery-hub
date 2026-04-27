@@ -945,12 +945,11 @@ export const buildCsvRows = (
 };
 
 // --- 1. THE TRANSLATOR BRAIN ---
-// This automatically swaps prefixes (e.g. ENG -> DG for David Game)
+// This automatically swaps prefixes (e.g. ENG -> DG for David Game, BP for Bromley)
 const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): string => {
   let suffix = baseCode;
   const prefixes = ["ENG", "SCOT", "WAL", "IOM", "GST", "NBA", "DG", "DE", "BP", "CHSCT", "CHSC"];
   
-  // Strip the prefix to get the core topic (e.g., "ENGHT" -> "HT")
   for (const p of prefixes) {
     if (baseCode.startsWith(p)) {
       suffix = baseCode.substring(p.length);
@@ -958,7 +957,6 @@ const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): str
     }
   }
 
-  // Map to the correct app prefix
   const prefixMap: Record<AppKey, string> = {
     ssZm: "ENG", ssEng: "ENG", ssScot: "SCOT", ssWales: "WAL", ssIom: "IOM",
     gst: "GST", nba: "NBA", ssni: "DE", davidGame: "DG", bromley: "BP", fostering: "CHSCT", 
@@ -972,86 +970,140 @@ const getAppSpecificCourseCode = (baseCode: string, internalAppKey: AppKey): str
     if (suffix === "IS") return "CHSCIS";
     if (suffix === "SC") return "CHSCSC";
     if (suffix === "G") return "CHSCTGA"; 
+    if (suffix === "CSE") return "CHSCTCSE";
   }
   if (internalAppKey === "bromley" && suffix === "S") return "BPSC";
 
   return newPrefix + suffix;
 };
 
-// --- 2. THE FIXED CSV GENERATOR ---
+// --- 2. SMART ASSET GENERATOR (Fixes the missing Group Icon column) ---
+const getGroupIcon = (courseGroup: string, appPrefix: string, baseCourseIcon: string): string => {
+    if (!baseCourseIcon) return "";
+    const folder = baseCourseIcon.substring(0, baseCourseIcon.lastIndexOf('/') + 1);
+    const group = (courseGroup || "").toLowerCase();
+    
+    // Fostering & Bromley Specifics
+    if (appPrefix === "BP") return folder + "coursegroupicon.png";
+    if (appPrefix.startsWith("CHSC")) {
+        if (group.includes("child")) return folder + "hsct_child_exploitation.png";
+        return folder + "hsct_online_safety_advice.png";
+    }
+    
+    // Standard App Patterns
+    let filePrefix = "ss_";
+    if (appPrefix === "GST") filePrefix = "gst_";
+    if (appPrefix === "NBA") filePrefix = "nba_";
+    if (appPrefix === "DG") filePrefix = "dgc_";
+    
+    if (group.includes("online safety")) return folder + filePrefix + "online_safety.png";
+    if (group.includes("professional")) return folder + filePrefix + "professional_dev.png";
+    if (group.includes("teaching")) return folder + "teaching_resources.png";
+    if (group.includes("friend") || group.includes("password") || group.includes("stories")) return folder + filePrefix + "stories.png";
+    
+    return "";
+};
+
+// --- 3. THE FIXED CSV GENERATOR (Adds App Headings & Groups rows!) ---
 export const generateCSV = (files: GeneratedFile[], meta: Metadata, selectedRoles: Record<string, boolean> = {}): string => {
   const allRows: string[] = [];
-  let headerGenerated = false;
 
+  const columns = [
+    "Role ", "Course Group", "Course Group Icon", "Course Name", "Course Icon", 
+    "Course Code", "Module Code", "Module Name", "Page Title", "PageIcon", 
+    "HTMLURL", "HeaderImageURL", "Video ID", "Colour", "Background Image", 
+    "Course Group Background Image", "Course Tile Background Image", 
+    "Is Story", "Is Full Screen", "Order", "Progress Style", "Navigation Style"
+  ];
+
+  // Group the files by App Name first so we can add headers
+  const filesByApp: Record<string, GeneratedFile[]> = {};
   files.forEach((file) => {
-    const internalAppKey = APP_NAME_TO_KEY[file.appName];
-    if (!internalAppKey) return;
+    if (!filesByApp[file.appName]) filesByApp[file.appName] = [];
+    filesByApp[file.appName].push(file);
+  });
+
+  // Loop through each App and build its section
+  Object.keys(filesByApp).forEach(appName => {
+    const appFiles = filesByApp[appName];
     
-    const configKey = APP_KEY_TO_CONFIG[internalAppKey];
-    const config = APP_CONFIGS[configKey];
-    if (!config) return;
+    // 1. INJECT THE APP HEADING ROW
+    allRows.push(`"--- ${appName.toUpperCase()} ---"${",".repeat(columns.length - 1)}`);
+    // 2. INJECT THE COLUMNS HEADER ROW
+    allRows.push(columns.join(","));
 
-    const columns = [
-      "Role ", "Course Group", "Course Group Icon", "Course Name", "Course Icon", 
-      "Course Code", "Module Code", "Module Name", "Page Title", "PageIcon", 
-      "HTMLURL", "HeaderImageURL", "Video ID", "Colour", "Background Image", 
-      "Course Group Background Image", "Course Tile Background Image", 
-      "Is Story", "Is Full Screen", "Order", "Progress Style", "Navigation Style"
-    ];
-
-    if (!headerGenerated) {
-      allRows.push(columns.join(","));
-      headerGenerated = true;
-    }
-
-    // THIS IS THE MAGIC: Translate ENGHT to DGHT, DEHT, etc. based on the app!
-    const appSpecificCode = getAppSpecificCourseCode(meta.courseCode, internalAppKey);
-
-    // Look up the specific app's data using the TRANSLATED code
-    const courseData = COURSE_LIBRARY[appSpecificCode] || COURSE_LIBRARY[meta.courseCode] || {
-      courseGroup: "", courseName: "", hexColour: "", courseIcon: ""
-    };
-
-    const availableRolesInApp = config.roles || {};
-    
-    Object.keys(selectedRoles).forEach((roleKey) => {
-      if (selectedRoles[roleKey] && availableRolesInApp[roleKey as RoleKey]) {
-        const exactRoleName = availableRolesInApp[roleKey as RoleKey];
+    appFiles.forEach(file => {
+        const internalAppKey = APP_NAME_TO_KEY[file.appName];
+        if (!internalAppKey) return;
         
-        const rowData = columns.map(col => {
-          const cleanCol = col.trim().toLowerCase();
-          
-          if (cleanCol === "role" || cleanCol === "role ") return exactRoleName;
-          if (cleanCol === "htmlurl" || cleanCol === "html url") return `${config.baseUrl}${file.fileName}`;
-          if (cleanCol === "page title") return meta.pageTitle;
-          if (cleanCol === "headerimageurl" || cleanCol === "header image url") return meta.headerImageUrl || "";
-          
-          // Use the TRANSLATED course code for the CSV!
-          if (cleanCol === "course code") return appSpecificCode; 
-          
-          // Pulling the correct App-Specific data from the Dictionary
-          if (cleanCol === "course group") return courseData.courseGroup || "";
-          if (cleanCol === "course name") return courseData.courseName || meta.courseName;
-          if (cleanCol === "colour") return courseData.hexColour || "";
-          if (cleanCol === "course icon" || cleanCol === "pageicon" || cleanCol === "page icon") return courseData.courseIcon || "";
-          
-          // Static Defaults
-          if (cleanCol === "module code") return "L1";
-          if (cleanCol === "module name") return "Level 1";
-          if (cleanCol === "is story") return "False";
-          if (cleanCol === "is full screen") return "False";
-          if (cleanCol === "order") return "1";
-          if (cleanCol === "navigation style") return "Free";
-          
-          return ""; 
-        });
+        const configKey = APP_KEY_TO_CONFIG[internalAppKey];
+        const config = APP_CONFIGS[configKey];
+        if (!config) return;
 
-        allRows.push(rowData.map(v => {
-            const s = String(v || "");
-            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        }).join(","));
-      }
+        const appSpecificCode = getAppSpecificCourseCode(meta.courseCode, internalAppKey);
+        
+        const courseData = COURSE_LIBRARY[appSpecificCode] || COURSE_LIBRARY[meta.courseCode] || {
+          courseGroup: "Online Safety Guidance", courseName: meta.courseName, hexColour: "#398440", courseIcon: ""
+        };
+
+        // Determine Prefix for Assets
+        let appPrefix = "ENG";
+        if (appSpecificCode.startsWith("DG")) appPrefix = "DG";
+        else if (appSpecificCode.startsWith("GST")) appPrefix = "GST";
+        else if (appSpecificCode.startsWith("NBA")) appPrefix = "NBA";
+        else if (appSpecificCode.startsWith("DE")) appPrefix = "DE";
+        else if (appSpecificCode.startsWith("BP")) appPrefix = "BP";
+        else if (appSpecificCode.startsWith("CHSC")) appPrefix = "CHSC";
+
+        let finalCourseIcon = courseData.courseIcon || "";
+        if (internalAppKey === "ssni" && finalCourseIcon) {
+             finalCourseIcon = finalCourseIcon.replace("/assets/icons/", "/northernireland/assets/tile_icons/");
+        }
+
+        // Generate the missing Group Icon URL automatically
+        const generatedGroupIcon = getGroupIcon(courseData.courseGroup, appPrefix, finalCourseIcon);
+
+        const availableRolesInApp = config.roles || {};
+        
+        Object.keys(selectedRoles).forEach((roleKey) => {
+          if (selectedRoles[roleKey] && availableRolesInApp[roleKey as RoleKey]) {
+            const exactRoleName = availableRolesInApp[roleKey as RoleKey];
+            
+            const rowData = columns.map(col => {
+              const cleanCol = col.trim().toLowerCase();
+              
+              if (cleanCol === "role" || cleanCol === "role ") return exactRoleName;
+              if (cleanCol === "htmlurl" || cleanCol === "html url") return `${config.baseUrl}${file.fileName}`;
+              if (cleanCol === "page title") return meta.pageTitle;
+              if (cleanCol === "headerimageurl" || cleanCol === "header image url") return meta.headerImageUrl || "";
+              if (cleanCol === "course code") return appSpecificCode; 
+              
+              if (cleanCol === "course group") return courseData.courseGroup;
+              if (cleanCol === "course group icon") return generatedGroupIcon; // FIX: Injects Group Icon
+              if (cleanCol === "course name") return courseData.courseName;
+              if (cleanCol === "colour") return courseData.hexColour;
+              if (cleanCol === "course icon" || cleanCol === "pageicon" || cleanCol === "page icon") return finalCourseIcon;
+              
+              if (cleanCol === "module code") return "L1";
+              if (cleanCol === "module name") return "Level 1";
+              if (cleanCol === "is story") return "False";
+              if (cleanCol === "is full screen") return "False";
+              if (cleanCol === "order") return "1";
+              if (cleanCol === "navigation style") return "Free";
+              
+              return ""; 
+            });
+
+            allRows.push(rowData.map(v => {
+                const s = String(v || "");
+                return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            }).join(","));
+          }
+        });
     });
+    
+    // Add a blank row to create spacing between Apps in Excel
+    allRows.push(",".repeat(columns.length - 1));
   });
 
   return allRows.join("\n");
