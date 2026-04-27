@@ -349,28 +349,31 @@ export const generateFiles = (
       out.push({ appName: "Safer Schools NI", fileName: buildName("ssni", "_deni"), content: serializeFullDoc(ssniDoc), mime: "text/html", audienceTarget });
     }
 
-    if (selection.davidGame) {
+if (selection.davidGame) {
       const dgDoc = parseHTML(englandHTML);
       swapClass(dgDoc, topicClassName, "davidgamegreen");
       fixImagePathsDavidGame(dgDoc);
-      out.push({ appName: "David Game College", fileName: buildName("davidGame", "_davidgame"), content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)), mime: "text/html", audienceTarget });
+      // Removed the "_davidgame" suffix!
+      out.push({ appName: "David Game College", fileName: buildName("davidGame", ""), content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)), mime: "text/html", audienceTarget });
     }
 
-    if (selection.bromley) {
+if (selection.bromley) {
       const bromDoc = parseHTML(englandHTML);
       swapClass(bromDoc, topicClassName, "bromgreen");
       fixImagePathsStripped(bromDoc);
-      out.push({ appName: "Bromley Permanency", fileName: buildName("bromley", "_bromley"), content: injectBody(shells.bromley, serializeBodyInner(bromDoc)), mime: "text/html", audienceTarget });
+      // Removed the "_bromley" suffix!
+      out.push({ appName: "Bromley Permanency", fileName: buildName("bromley", ""), content: injectBody(shells.bromley, serializeBodyInner(bromDoc)), mime: "text/html", audienceTarget });
     }
 
-    if (selection.fostering) {
+if (selection.fostering) {
       const fosDoc = parseHTML(niHTML);
       const fosteringClass = HSCT_CLASS_MAP[courseCode] || "hsc-general";
       swapClass(fosDoc, topicClassName, fosteringClass);
       fixImagePathsStripped(fosDoc);
       replaceFosteringButtons(fosDoc);
       const fosteringShell = (shells.fostering || "").split("[INSERT_SECTION_CODE]").join(fosteringClass);
-      out.push({ appName: "Fostering in a Digital World", fileName: buildName("fostering", "_fostering"), content: injectBody(fosteringShell, serializeBodyInner(fosDoc)), mime: "text/html", audienceTarget });
+      // Removed the "_fostering" suffix!
+      out.push({ appName: "Fostering in a Digital World", fileName: buildName("fostering", ""), content: injectBody(fosteringShell, serializeBodyInner(fosDoc)), mime: "text/html", audienceTarget });
     }
   });
 
