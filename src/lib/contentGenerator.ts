@@ -1,5 +1,4 @@
 export interface Metadata {
-  audience: string;
   courseName: string;
   courseCode: string;
   pageTitle: string;
@@ -265,6 +264,15 @@ const getCourseAbbreviation = (code: string) => {
   return suffix.toLowerCase();
 };
 
+// NEW: The App looks at your checked boxes to calculate the filename prefix!
+const getAudience = (roles: Record<string, boolean>) => {
+  if (roles.pupilPrimary) return "pupil_ks2";
+  if (roles.pupilLower) return "pupil_lower_secondary";
+  if (roles.pupilMiddle) return "pupil_middle";
+  if (roles.pupilUpper) return "upper_secondary";
+  return "ad"; // If no pupil roles are checked, it defaults to Adults (Staff/Parents/SG)
+};
+
 const getFilenamePrefix = (appKey: AppKey, audience: string) => {
   let appPrefix = "educ";
   if (appKey === "davidGame") appPrefix = "dgc";
@@ -272,7 +280,6 @@ const getFilenamePrefix = (appKey: AppKey, audience: string) => {
   else if (appKey === "fostering") appPrefix = "hsct";
 
   let roleStr = audience;
-  // Automatically apply Fostering's specific "fc" role instead of "ad"
   if (appKey === "fostering" && audience === "ad") roleStr = "fc";
 
   if (!roleStr) return appPrefix;
@@ -283,10 +290,13 @@ export const generateFiles = (
   baseHTML: string,
   meta: Metadata,
   snippets: RegionalSnippets,
+  roles: Record<string, boolean>, // NEW: We pass the checked roles into the generator
   shells: AppShells = DEFAULT_SHELLS,
   selection: AppSelection = DEFAULT_SELECTION
 ): GeneratedFile[] => {
   const { courseCode, topicClassName } = meta;
+
+  const audienceStr = getAudience(roles);
 
   const englandHTML = injectRegional(baseHTML, snippets.england, topicClassName);
   const niHTML = injectRegional(baseHTML, snippets.northernIreland, topicClassName);
@@ -303,110 +313,56 @@ export const generateFiles = (
 
   const out: GeneratedFile[] = [];
 
-  // MATHEMATICALLY BUILDS THE PERFECT FILENAME FOR EACH APP
   const buildName = (appKey: AppKey, suffix: string) => {
-    const prefix = getFilenamePrefix(appKey, meta.audience);
+    const prefix = getFilenamePrefix(appKey, audienceStr);
     const course = getCourseAbbreviation(meta.courseCode);
-    // Convert Page Title (e.g. "Catching a Catfish") to safe string (e.g. "catching_a_catfish")
     const safeTitle = (meta.pageTitle || "page").toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
     const rawName = `${prefix}_${course}_${safeTitle}${suffix}.html`;
-    return rawName.replace(/_+/g, '_'); // Cleans up any accidental double-underscores
+    return rawName.replace(/_+/g, '_'); 
   };
 
   if (selection.ssZm) {
-    out.push({
-      appName: "Safer Schools ZM",
-      fileName: buildName("ssZm", "_all"),
-      content: englandHTML,
-      mime: "text/html",
-    });
+    out.push({ appName: "Safer Schools ZM", fileName: buildName("ssZm", "_all"), content: englandHTML, mime: "text/html" });
   }
 
-  if (!allRegionalEmpty) {
-    if (selection.ssEng) {
-      out.push({
-        appName: "Safer Schools England",
-        fileName: buildName("ssEng", "_eng"),
-        content: englandHTML,
-        mime: "text/html",
-      });
-    }
-    if (selection.ssScot) {
-      out.push({
-        appName: "Safer Schools Scotland",
-        fileName: buildName("ssScot", "_scot"),
-        content: scotlandHTML,
-        mime: "text/html",
-      });
-    }
-    if (selection.ssWales) {
-      out.push({
-        appName: "Safer Schools Wales",
-        fileName: buildName("ssWales", "_wales"),
-        content: walesHTML,
-        mime: "text/html",
-      });
-    }
-    if (selection.ssIom) {
-      out.push({
-        appName: "Safer Schools Isle of Man",
-        fileName: buildName("ssIom", "_iom"),
-        content: iomHTML,
-        mime: "text/html",
-      });
-    }
+  if (selection.ssEng) {
+    out.push({ appName: "Safer Schools England", fileName: buildName("ssEng", allRegionalEmpty ? "_all" : "_eng"), content: englandHTML, mime: "text/html" });
+  }
+  if (selection.ssScot) {
+    out.push({ appName: "Safer Schools Scotland", fileName: buildName("ssScot", allRegionalEmpty ? "_all" : "_scot"), content: scotlandHTML, mime: "text/html" });
+  }
+  if (selection.ssWales) {
+    out.push({ appName: "Safer Schools Wales", fileName: buildName("ssWales", allRegionalEmpty ? "_all" : "_wales"), content: walesHTML, mime: "text/html" });
+  }
+  if (selection.ssIom) {
+    out.push({ appName: "Safer Schools Isle of Man", fileName: buildName("ssIom", allRegionalEmpty ? "_all" : "_iom"), content: iomHTML, mime: "text/html" });
   }
 
   if (selection.gst) {
-    out.push({
-      appName: "Great Schools Trust",
-      fileName: buildName("gst", "_GST"),
-      content: englandHTML,
-      mime: "text/html",
-    });
+    out.push({ appName: "Great Schools Trust", fileName: buildName("gst", "_GST"), content: englandHTML, mime: "text/html" });
   }
   if (selection.nba) {
-    out.push({
-      appName: "North Birmingham Academy",
-      fileName: buildName("nba", "_NBA"),
-      content: englandHTML,
-      mime: "text/html",
-    });
+    out.push({ appName: "North Birmingham Academy", fileName: buildName("nba", "_NBA"), content: englandHTML, mime: "text/html" });
   }
 
   if (selection.ssni) {
     const ssniDoc = parseHTML(niHTML);
     swapClass(ssniDoc, topicClassName, "deniblue");
-    out.push({
-      appName: "Safer Schools NI",
-      fileName: buildName("ssni", "_deni"),
-      content: serializeFullDoc(ssniDoc),
-      mime: "text/html",
-    });
+    out.push({ appName: "Safer Schools NI", fileName: buildName("ssni", "_deni"), content: serializeFullDoc(ssniDoc), mime: "text/html" });
   }
 
   if (selection.davidGame) {
     const dgDoc = parseHTML(englandHTML);
     swapClass(dgDoc, topicClassName, "davidgamegreen");
     fixImagePathsDavidGame(dgDoc);
-    out.push({
-      appName: "David Game College",
-      fileName: buildName("davidGame", "_davidgame"),
-      content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)),
-      mime: "text/html",
-    });
+    out.push({ appName: "David Game College", fileName: buildName("davidGame", "_davidgame"), content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)), mime: "text/html" });
   }
 
   if (selection.bromley) {
     const bromDoc = parseHTML(englandHTML);
     swapClass(bromDoc, topicClassName, "bromgreen");
     fixImagePathsStripped(bromDoc);
-    out.push({
-      appName: "Bromley Permanency",
-      fileName: buildName("bromley", "_bromley"),
-      content: injectBody(shells.bromley, serializeBodyInner(bromDoc)),
-      mime: "text/html",
-    });
+    out.push({ appName: "Bromley Permanency", fileName: buildName("bromley", "_bromley"), content: injectBody(shells.bromley, serializeBodyInner(bromDoc)), mime: "text/html" });
   }
 
   if (selection.fostering) {
@@ -416,12 +372,7 @@ export const generateFiles = (
     fixImagePathsStripped(fosDoc);
     replaceFosteringButtons(fosDoc);
     const fosteringShell = (shells.fostering || "").split("[INSERT_SECTION_CODE]").join(fosteringClass);
-    out.push({
-      appName: "Fostering in a Digital World",
-      fileName: buildName("fostering", "_fostering"),
-      content: injectBody(fosteringShell, serializeBodyInner(fosDoc)),
-      mime: "text/html",
-    });
+    out.push({ appName: "Fostering in a Digital World", fileName: buildName("fostering", "_fostering"), content: injectBody(fosteringShell, serializeBodyInner(fosDoc)), mime: "text/html" });
   }
 
   return out;
