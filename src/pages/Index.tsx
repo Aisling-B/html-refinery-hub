@@ -31,7 +31,6 @@ import {
 const Index = () => {
   const [baseHTML, setBaseHTML] = useState("");
 const [meta, setMeta] = useState<Metadata>({
-    audience: "ad",
     courseName: "",
     courseCode: "",
     pageTitle: "",
@@ -75,7 +74,7 @@ const [meta, setMeta] = useState<Metadata>({
       return;
     }
     try {
-      const files = generateFiles(baseHTML, meta, snippets, DEFAULT_SHELLS, selection);
+const files = generateFiles(baseHTML, meta, snippets, roles, DEFAULT_SHELLS, selection);
       if (!files.length) {
         toast.error("No apps selected", { description: "Tick at least one app to generate." });
         return;
@@ -223,22 +222,6 @@ const [meta, setMeta] = useState<Metadata>({
 
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 
-                {/* UPGRADED: Dynamic Filename Builder */}
-                <div>
-                  <Label htmlFor="audience" className="mb-1.5 block">Audience / Role Target</Label>
-                  <select
-                    id="audience"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={meta.audience}
-                    onChange={(e) => setMeta({ ...meta, audience: e.target.value })}
-                  >
-                    <option value="ad">Adults (Staff, Parents, SG)</option>
-                    <option value="pupil_ks2">Pupil Primary (KS2)</option>
-                    <option value="pupil_lower_secondary">Pupil Lower Secondary</option>
-                    <option value="pupil_middle">Pupil Middle Secondary</option>
-                    <option value="upper_secondary">Pupil Upper Secondary</option>
-                  </select>
-                </div>
 
                 {/* UPGRADED: Smart Dropdown selector (Auto-fills Code, leaves CSS manual) */}
                 <div>
