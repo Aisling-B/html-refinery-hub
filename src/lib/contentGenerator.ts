@@ -1,5 +1,5 @@
 export interface Metadata {
-  baseFilename: string;
+  audience: string;
   courseName: string;
   courseCode: string;
   pageTitle: string;
@@ -252,6 +252,33 @@ const replaceFosteringButtons = (root: Document) => {
   });
 };
 
+// --- DYNAMIC FILENAME HELPERS ---
+const getCourseAbbreviation = (code: string) => {
+  const prefixes = ["ENG", "SCOT", "WAL", "IOM", "GST", "NBA", "DG", "DE", "BP", "CHSCT", "CHSC"];
+  let suffix = code || "";
+  for (const p of prefixes) {
+    if (suffix.startsWith(p)) {
+      suffix = suffix.substring(p.length);
+      break;
+    }
+  }
+  return suffix.toLowerCase();
+};
+
+const getFilenamePrefix = (appKey: AppKey, audience: string) => {
+  let appPrefix = "educ";
+  if (appKey === "davidGame") appPrefix = "dgc";
+  else if (appKey === "bromley") appPrefix = "brom_perm";
+  else if (appKey === "fostering") appPrefix = "hsct";
+
+  let roleStr = audience;
+  // Automatically apply Fostering's specific "fc" role instead of "ad"
+  if (appKey === "fostering" && audience === "ad") roleStr = "fc";
+
+  if (!roleStr) return appPrefix;
+  return `${appPrefix}_${roleStr}`;
+};
+
 export const generateFiles = (
   baseHTML: string,
   meta: Metadata,
@@ -259,7 +286,7 @@ export const generateFiles = (
   shells: AppShells = DEFAULT_SHELLS,
   selection: AppSelection = DEFAULT_SELECTION
 ): GeneratedFile[] => {
-  const { baseFilename, courseCode, topicClassName } = meta;
+  const { courseCode, topicClassName } = meta;
 
   const englandHTML = injectRegional(baseHTML, snippets.england, topicClassName);
   const niHTML = injectRegional(baseHTML, snippets.northernIreland, topicClassName);
@@ -276,10 +303,20 @@ export const generateFiles = (
 
   const out: GeneratedFile[] = [];
 
+  // MATHEMATICALLY BUILDS THE PERFECT FILENAME FOR EACH APP
+  const buildName = (appKey: AppKey, suffix: string) => {
+    const prefix = getFilenamePrefix(appKey, meta.audience);
+    const course = getCourseAbbreviation(meta.courseCode);
+    // Convert Page Title (e.g. "Catching a Catfish") to safe string (e.g. "catching_a_catfish")
+    const safeTitle = (meta.pageTitle || "page").toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+    const rawName = `${prefix}_${course}_${safeTitle}${suffix}.html`;
+    return rawName.replace(/_+/g, '_'); // Cleans up any accidental double-underscores
+  };
+
   if (selection.ssZm) {
     out.push({
       appName: "Safer Schools ZM",
-      fileName: `${baseFilename}_all.html`,
+      fileName: buildName("ssZm", "_all"),
       content: englandHTML,
       mime: "text/html",
     });
@@ -289,7 +326,7 @@ export const generateFiles = (
     if (selection.ssEng) {
       out.push({
         appName: "Safer Schools England",
-        fileName: `${baseFilename}_eng.html`,
+        fileName: buildName("ssEng", "_eng"),
         content: englandHTML,
         mime: "text/html",
       });
@@ -297,7 +334,7 @@ export const generateFiles = (
     if (selection.ssScot) {
       out.push({
         appName: "Safer Schools Scotland",
-        fileName: `${baseFilename}_scot.html`,
+        fileName: buildName("ssScot", "_scot"),
         content: scotlandHTML,
         mime: "text/html",
       });
@@ -305,7 +342,7 @@ export const generateFiles = (
     if (selection.ssWales) {
       out.push({
         appName: "Safer Schools Wales",
-        fileName: `${baseFilename}_wales.html`,
+        fileName: buildName("ssWales", "_wales"),
         content: walesHTML,
         mime: "text/html",
       });
@@ -313,7 +350,7 @@ export const generateFiles = (
     if (selection.ssIom) {
       out.push({
         appName: "Safer Schools Isle of Man",
-        fileName: `${baseFilename}_iom.html`,
+        fileName: buildName("ssIom", "_iom"),
         content: iomHTML,
         mime: "text/html",
       });
@@ -323,7 +360,7 @@ export const generateFiles = (
   if (selection.gst) {
     out.push({
       appName: "Great Schools Trust",
-      fileName: `${baseFilename}_GST.html`,
+      fileName: buildName("gst", "_GST"),
       content: englandHTML,
       mime: "text/html",
     });
@@ -331,7 +368,7 @@ export const generateFiles = (
   if (selection.nba) {
     out.push({
       appName: "North Birmingham Academy",
-      fileName: `${baseFilename}_NBA.html`,
+      fileName: buildName("nba", "_NBA"),
       content: englandHTML,
       mime: "text/html",
     });
@@ -342,7 +379,7 @@ export const generateFiles = (
     swapClass(ssniDoc, topicClassName, "deniblue");
     out.push({
       appName: "Safer Schools NI",
-      fileName: `${baseFilename}_deni.html`,
+      fileName: buildName("ssni", "_deni"),
       content: serializeFullDoc(ssniDoc),
       mime: "text/html",
     });
@@ -354,7 +391,7 @@ export const generateFiles = (
     fixImagePathsDavidGame(dgDoc);
     out.push({
       appName: "David Game College",
-      fileName: `${baseFilename}_davidgame.html`,
+      fileName: buildName("davidGame", "_davidgame"),
       content: injectBody(shells.davidGame, serializeBodyInner(dgDoc)),
       mime: "text/html",
     });
@@ -366,7 +403,7 @@ export const generateFiles = (
     fixImagePathsStripped(bromDoc);
     out.push({
       appName: "Bromley Permanency",
-      fileName: `${baseFilename}_bromley.html`,
+      fileName: buildName("bromley", "_bromley"),
       content: injectBody(shells.bromley, serializeBodyInner(bromDoc)),
       mime: "text/html",
     });
@@ -381,7 +418,7 @@ export const generateFiles = (
     const fosteringShell = (shells.fostering || "").split("[INSERT_SECTION_CODE]").join(fosteringClass);
     out.push({
       appName: "Fostering in a Digital World",
-      fileName: `${baseFilename}_fostering.html`,
+      fileName: buildName("fostering", "_fostering"),
       content: injectBody(fosteringShell, serializeBodyInner(fosDoc)),
       mime: "text/html",
     });
