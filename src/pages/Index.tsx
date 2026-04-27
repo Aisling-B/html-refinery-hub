@@ -221,8 +221,7 @@ const [meta, setMeta] = useState<Metadata>({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 
                 {/* UPGRADED: Dynamic Filename Builder */}
                 <div>
@@ -245,21 +244,17 @@ const [meta, setMeta] = useState<Metadata>({
                 <div>
                   <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
                   <select
-                
-                {/* UPGRADED: Smart Dropdown selector */}
-                <div>
-                  <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
-                  <select
                     id="courseName"
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={meta.courseName}
                     onChange={(e) => {
                       const selectedName = e.target.value;
                       const selectedOption = courseOptions.find(o => o.name === selectedName);
+                      
                       setMeta({ 
                         ...meta, 
                         courseName: selectedName, 
-                        courseCode: selectedOption ? selectedOption.code : meta.courseCode 
+                        courseCode: selectedOption ? selectedOption.code : meta.courseCode
                       });
                     }}
                   >
@@ -279,6 +274,7 @@ const [meta, setMeta] = useState<Metadata>({
                   <Label htmlFor="pageTitle" className="mb-1.5 block">Page Title</Label>
                   <Input id="pageTitle" value={meta.pageTitle} onChange={(e) => setMeta({ ...meta, pageTitle: e.target.value })} placeholder="Catching a Catfish" />
                 </div>
+
                 <div>
                   <Label htmlFor="topicClassName" className="mb-1.5 block">Topic Class Name (CSS)</Label>
                   <Input id="topicClassName" value={meta.topicClassName} onChange={(e) => setMeta({ ...meta, topicClassName: e.target.value })} placeholder="hottopics" />
