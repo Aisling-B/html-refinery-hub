@@ -293,6 +293,7 @@ const getFilenamePrefix = (appKey: AppKey, audienceTarget: string) => {
     // Swaps "upper_secondary" to "6th_form_student"
     if (audienceTarget === "upper_secondary") roleStr = "6th_form_student";
     if (audienceTarget === "pupil_middle") roleStr = "gcse_students";
+  }
 
       // 3. Safer Schools NI specific overrides
   if (appKey === "ssni") {
@@ -301,6 +302,7 @@ const getFilenamePrefix = (appKey: AppKey, audienceTarget: string) => {
     if (audienceTarget === "pupil_lower_secondary") roleStr = "8_9_secondary";
     if (audienceTarget === "pupil_middle") roleStr = "pupil_10_11_secondary";
     if (audienceTarget === "upper_secondary") roleStr = "pupil_12_14_secondary";
+  }
 
 
   if (!roleStr) return appPrefix;
