@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,31 +29,41 @@ import {
 } from "@/lib/contentGenerator";
 
 const Index = () => {
-  const [baseHTML, setBaseHTML] = useState("");
-const [meta, setMeta] = useState<Metadata>({
-    courseName: "",
-    courseCode: "",
-    pageTitle: "",
-    topicClassName: "",
+  // 1. SMART BROWSER MEMORY: Loads saved data on startup, or falls back to defaults!
+  const [baseHTML, setBaseHTML] = useState(() => localStorage.getItem("baseHTML") || "");
+  const [meta, setMeta] = useState<Metadata>(() => {
+    const saved = localStorage.getItem("meta");
+    return saved ? JSON.parse(saved) : { courseName: "", courseCode: "", pageTitle: "", topicClassName: "" };
   });
-  const [snippets, setSnippets] = useState<RegionalSnippets>({
-    england: "",
-    northernIreland: "",
-    wales: "",
-    scotland: "",
-    isleOfMan: "",
+  const [snippets, setSnippets] = useState<RegionalSnippets>(() => {
+    const saved = localStorage.getItem("snippets");
+    return saved ? JSON.parse(saved) : { england: "", northernIreland: "", wales: "", scotland: "", isleOfMan: "" };
   });
-  const [selection, setSelection] = useState<AppSelection>(DEFAULT_SELECTION);
-  const [roles, setRoles] = useState<Record<RoleKey, boolean>>(DEFAULT_ROLES);
+  const [selection, setSelection] = useState<AppSelection>(() => {
+    const saved = localStorage.getItem("selection");
+    return saved ? JSON.parse(saved) : DEFAULT_SELECTION;
+  });
+  const [roles, setRoles] = useState<Record<RoleKey, boolean>>(() => {
+    const saved = localStorage.getItem("roles");
+    return saved ? JSON.parse(saved) : DEFAULT_ROLES;
+  });
+
   const [generated, setGenerated] = useState<GeneratedFile[] | null>(null);
   const [csv, setCsv] = useState<string>("");
 
-  // Dynamically build the Course Dropdown list from the Master Dictionary
+  // 2. SAVES TO MEMORY: Every time you type or click, it silently backs up your work.
+  useEffect(() => {
+    localStorage.setItem("baseHTML", baseHTML);
+    localStorage.setItem("meta", JSON.stringify(meta));
+    localStorage.setItem("snippets", JSON.stringify(snippets));
+    localStorage.setItem("selection", JSON.stringify(selection));
+    localStorage.setItem("roles", JSON.stringify(roles));
+  }, [baseHTML, meta, snippets, selection, roles]);
+
   const courseOptions = useMemo(() => {
     const uniqueCoursesMap = new Map<string, string>();
     Object.entries(COURSE_LIBRARY).forEach(([code, data]) => {
       if (!data.courseName) return;
-      // Prefer standard "ENG" base codes for the auto-fill
       if (code.startsWith("ENG") || !uniqueCoursesMap.has(data.courseName)) {
         uniqueCoursesMap.set(data.courseName, code.startsWith("ENG") ? code : (uniqueCoursesMap.get(data.courseName) || code));
       }
@@ -74,7 +84,7 @@ const [meta, setMeta] = useState<Metadata>({
       return;
     }
     try {
-const files = generateFiles(baseHTML, meta, snippets, roles, DEFAULT_SHELLS, selection);
+      const files = generateFiles(baseHTML, meta, snippets, roles, DEFAULT_SHELLS, selection);
       if (!files.length) {
         toast.error("No apps selected", { description: "Tick at least one app to generate." });
         return;
@@ -89,17 +99,17 @@ const files = generateFiles(baseHTML, meta, snippets, roles, DEFAULT_SHELLS, sel
     }
   };
 
-const handleDownload = async () => {
+  const handleDownload = async () => {
     if (!generated) return;
     const zip = new JSZip();
     generated.forEach((f) => zip.file(f.fileName, f.content));
-    zip.file("CSV_Lines_Update.csv", csv);
+    zip.file("Content_Tracker_Update.csv", csv);
     const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     
-    // NEW: Safely format the Page Title to use as the ZIP file name!
+    // Safely format the Page Title to use as the ZIP file name!
     const safeTitle = (meta.pageTitle || "content").toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
     a.download = `${safeTitle}_bundle.zip`;
     
@@ -110,12 +120,17 @@ const handleDownload = async () => {
     toast.success("Bundle downloaded");
   };
 
-  const toggleApp = (key: AppKey) => {
-    setSelection((s) => ({ ...s, [key]: !s[key] }));
-  };
+  const toggleApp = (key: AppKey) => setSelection((s) => ({ ...s, [key]: !s[key] }));
+  const toggleRole = (key: RoleKey) => setRoles((r) => ({ ...r, [key]: !r[key] }));
 
-  const toggleRole = (key: RoleKey) => {
-    setRoles((r) => ({ ...r, [key]: !r[key] }));
+  // 3. SELECT ALL / CLEAR ALL LOGIC
+  const setAllApps = (val: boolean) => {
+    const newSelection = APP_OPTIONS.reduce((acc, o) => { acc[o.key] = val; return acc; }, {} as AppSelection);
+    setSelection(newSelection);
+  };
+  const setAllRoles = (val: boolean) => {
+    const newRoles = ROLE_OPTIONS.reduce((acc, r) => { acc[r.key] = val; return acc; }, {} as Record<RoleKey, boolean>);
+    setRoles(newRoles);
   };
 
   const signpostingFields: { key: keyof RegionalSnippets; label: string }[] = [
@@ -179,26 +194,25 @@ const handleDownload = async () => {
                       <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">3</span> 
                       Fill in Page Details
                     </h4>
-                    <p className="text-muted-foreground pl-7">Provide the Base Filename, Page Title, and the CSS Topic Class Name (e.g., <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">hottopics</code>). Header Images and Page Icons will be intentionally left blank on your CSV for manual entry.</p>
+                    <p className="text-muted-foreground pl-7">Provide the Page Title and CSS Topic Class Name. The Hub will mathematically calculate your filename prefixes (e.g. `_ad_` vs `_pupil_ks2_`) based on the checkboxes you tick later!</p>
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
                       <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">4</span> 
                       Select Apps and Roles
                     </h4>
-                    <p className="text-muted-foreground pl-7">Tick the apps and user roles you want to generate. Don't worry about unchecking apps that don't offer the selected course—the Hub is smart enough to skip them automatically to keep your tracker clean!</p>
+                    <p className="text-muted-foreground pl-7">Tick the apps and user roles you want to generate. If an app doesn't have the selected course in its database, the Hub will automatically skip it to keep your CSV perfectly clean.</p>
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-1">
                       <span className="flex items-center justify-center bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs">5</span> 
                       Generate and Download
                     </h4>
-                    <p className="text-muted-foreground pl-7">Click Generate to build your HTML files and the master tracker CSV. Click download, and your cleanly formatted .ZIP bundle is ready for upload!</p>
+                    <p className="text-muted-foreground pl-7">Click Generate to build your HTML files and the master tracker CSV. Click download, and your perfectly named .ZIP bundle is ready for upload!</p>
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
-
             <ModeToggle />
           </div>
         </div>
@@ -206,7 +220,6 @@ const handleDownload = async () => {
 
       <main className="container py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Input column */}
           <Card className="p-6 shadow-[var(--shadow-card)]">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Input Content</h2>
@@ -224,10 +237,7 @@ const handleDownload = async () => {
                 />
               </div>
 
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-
-                {/* UPGRADED: Smart Dropdown selector (Auto-fills Code, leaves CSS manual) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="courseName" className="mb-1.5 block">Course Name</Label>
                   <select
@@ -237,7 +247,6 @@ const handleDownload = async () => {
                     onChange={(e) => {
                       const selectedName = e.target.value;
                       const selectedOption = courseOptions.find(o => o.name === selectedName);
-                      
                       setMeta({ 
                         ...meta, 
                         courseName: selectedName, 
@@ -268,7 +277,6 @@ const handleDownload = async () => {
                 </div>
               </div>
 
-              {/* UPGRADED: Collapsible Accordion for Regional Snippets */}
               <div className="pt-2">
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="regional" className="border border-border rounded-lg bg-card px-4 shadow-sm">
@@ -307,14 +315,21 @@ const handleDownload = async () => {
             </div>
           </Card>
 
-          {/* Output column */}
           <div className="space-y-6">
             <Card className="p-6 shadow-[var(--shadow-card)]">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">App Selection</h2>
-                <span className="text-xs text-muted-foreground">
-                  {Object.values(selection).filter(Boolean).length} of {APP_OPTIONS.length} selected
-                </span>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">App Selection</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {Object.values(selection).filter(Boolean).length} of {APP_OPTIONS.length} apps selected
+                  </p>
+                </div>
+                {/* 4. SELECT ALL / CLEAR ALL BUTTONS */}
+                <div className="flex gap-3 text-xs mt-1 shrink-0 bg-muted/40 p-1.5 rounded-md border border-border/50">
+                  <button onClick={() => setAllApps(true)} className="text-primary hover:underline font-medium px-1">Select All</button>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button onClick={() => setAllApps(false)} className="text-muted-foreground hover:underline px-1">Clear</button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {APP_OPTIONS.map((opt) => (
@@ -335,8 +350,17 @@ const handleDownload = async () => {
             </Card>
 
             <Card className="p-6 shadow-[var(--shadow-card)]">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">User Roles</h2>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">CSV Tracker Roles</h2>
+                  <p className="text-xs text-muted-foreground mt-1">Select roles to tag this file with in your CSV.</p>
+                </div>
+                {/* 4. SELECT ALL / CLEAR ALL BUTTONS */}
+                <div className="flex gap-3 text-xs mt-1 shrink-0 bg-muted/40 p-1.5 rounded-md border border-border/50">
+                  <button onClick={() => setAllRoles(true)} className="text-primary hover:underline font-medium px-1">Select All</button>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button onClick={() => setAllRoles(false)} className="text-muted-foreground hover:underline px-1">Clear</button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {ROLE_OPTIONS.map((opt) => (
