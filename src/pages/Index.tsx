@@ -342,4 +342,175 @@ const Index = () => {
 
               <div className="pt-2">
                 <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="regional" className="border border
+                  <AccordionItem value="regional" className="border border-border/60 rounded-xl bg-card/50 px-5 shadow-sm">
+                    <AccordionTrigger className="text-sm font-semibold hover:no-underline py-3.5">
+                      Regional Signposting Snippets
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4 pt-2 pb-4">
+                        {signpostingFields.map((f) => (
+                          <div key={f.key}>
+                            <Label htmlFor={`sn-${f.key}`} className="mb-1.5 block">{f.label}</Label>
+                            <Textarea
+                              id={`sn-${f.key}`}
+                              value={snippets[f.key]}
+                              onChange={(e) => setSnippets({ ...snippets, [f.key]: e.target.value })}
+                              placeholder={`HTML to inject for ${f.label.replace(" Signposting", "")}`}
+                              className="min-h-[80px] font-mono text-xs resize-y bg-background/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                size="lg"
+                className="w-full mt-6 h-12 text-primary-foreground border-0 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 transition-all font-bold text-base"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                <Sparkles className="h-5 w-5 mr-2" />
+                Generate Assets
+              </Button>
+            </div>
+          </Card>
+
+          <div className="space-y-6">
+            
+            {/* --- UPGRADE 2: INTERACTIVE PILL BUTTONS FOR APPS --- */}
+            <Card className="p-6 shadow-xl shadow-black/5 border-border/40 bg-card/80 backdrop-blur-sm">
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight">App Targets</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {Object.values(selection).filter(Boolean).length} of {APP_OPTIONS.length} selected
+                  </p>
+                </div>
+                <div className="flex gap-3 text-xs mt-1 shrink-0 bg-muted/50 p-1.5 rounded-lg border border-border/40">
+                  <button onClick={() => setAllApps(true)} className="text-primary hover:text-primary/80 font-semibold px-2 transition-colors">Select All</button>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button onClick={() => setAllApps(false)} className="text-muted-foreground hover:text-foreground font-medium px-2 transition-colors">Clear</button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                {APP_OPTIONS.map((opt) => {
+                  const isSelected = selection[opt.key];
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => toggleApp(opt.key)}
+                      className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 border ${
+                        isSelected 
+                          ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20 scale-[1.02]" 
+                          : "bg-background/50 text-muted-foreground border-border/60 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* --- UPGRADE 2: INTERACTIVE PILL BUTTONS FOR ROLES --- */}
+            <Card className="p-6 shadow-xl shadow-black/5 border-border/40 bg-card/80 backdrop-blur-sm">
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight">CSV Roles</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Tag generated files to these audiences.</p>
+                </div>
+                <div className="flex gap-3 text-xs mt-1 shrink-0 bg-muted/50 p-1.5 rounded-lg border border-border/40">
+                  <button onClick={() => setAllRoles(true)} className="text-primary hover:text-primary/80 font-semibold px-2 transition-colors">Select All</button>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button onClick={() => setAllRoles(false)} className="text-muted-foreground hover:text-foreground font-medium px-2 transition-colors">Clear</button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                {ROLE_OPTIONS.map((opt) => {
+                  const isSelected = roles[opt.key];
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => toggleRole(opt.key)}
+                      className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 border ${
+                        isSelected 
+                          ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20 scale-[1.02]" 
+                          : "bg-background/50 text-muted-foreground border-border/60 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            <Card className="p-6 shadow-xl shadow-black/5 border-border/40 bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold tracking-tight">Ready to Export</h2>
+                <span className="text-[11px] font-semibold tracking-wider uppercase bg-primary/10 text-primary px-2 py-1 rounded-md">
+                  {generated ? `${generated.length} Files` : "Awaiting Info"}
+                </span>
+              </div>
+
+              <ul className="space-y-2 mb-6">
+                {previewList.map((f, i) => {
+                  const ready = !!generated;
+                  return (
+                    <li
+                      key={i}
+                      className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors ${ready ? "bg-card border-border/60" : "bg-muted/20 border-transparent"}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {ready ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 drop-shadow-sm" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className={`text-sm font-semibold truncate ${ready ? "text-foreground" : "text-muted-foreground"}`}>{f.appName}</p>
+                          <p className="text-xs text-muted-foreground truncate font-mono mt-0.5">{f.fileName}</p>
+                        </div>
+                      </div>
+                      <FileCode2 className={`h-4 w-4 shrink-0 ${ready ? "text-muted-foreground" : "text-muted-foreground/30"}`} />
+                    </li>
+                  );
+                })}
+                <li className={`flex items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3 transition-colors ${generated ? "bg-card border-border/60" : "bg-muted/30 border-border/40"}`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {generated ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 drop-shadow-sm" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold ${generated ? "text-foreground" : "text-muted-foreground"}`}>Master Tracker CSV</p>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">Content_Tracker.csv</p>
+                    </div>
+                  </div>
+                  <FileCode2 className={`h-4 w-4 shrink-0 ${generated ? "text-muted-foreground" : "text-muted-foreground/30"}`} />
+                </li>
+              </ul>
+
+              <Button
+                onClick={handleDownload}
+                disabled={!generated}
+                size="lg"
+                variant="outline"
+                className={`w-full h-12 font-bold transition-all ${generated ? "hover:bg-primary hover:text-primary-foreground hover:border-primary shadow-sm" : ""}`}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download All as .ZIP
+              </Button>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Index;
