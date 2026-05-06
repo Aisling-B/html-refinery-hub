@@ -200,7 +200,7 @@ const Index = () => {
           <div className="flex items-center gap-3">
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 shadow-sm bg-background/50 backdrop-blur-sm hover:bg-muted/50 border-border/50">
+               <Button variant="outline" size="sm" className="gap-2 shadow-sm bg-background/50 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground border-border/50">
                   <HelpCircle className="h-4 w-4" />
                   How to Use
                 </Button>
